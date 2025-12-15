@@ -4,7 +4,7 @@ import { searchComponentPrice } from '@/lib/tavily';
 import { SYSTEM_PROMPT, BOM_GENERATION_PROMPT, ASSEMBLY_INSTRUCTIONS_PROMPT, FIRMWARE_GENERATION_PROMPT, OPENSCAD_GENERATION_PROMPT, fillPromptTemplate } from '@/lib/prompts';
 import { generateRequestSchema } from '@/lib/validators';
 import type { GenerateResponse, ProjectOutputs, ProjectMetadata } from '@/types';
-import { computeSceneBounds, normalizeSceneColors } from '@/lib/scene';
+import { computeSceneBounds, normalizeSceneColors, fallbackScene } from '@/lib/scene';
 import { fallbackOpenSCAD } from '@/lib/openscad';
 import { orchestrate3DGeneration } from '@/lib/agents';
 
@@ -78,15 +78,8 @@ export async function POST(request: NextRequest) {
                 outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
             } catch (err) {
                 console.error('Agent pipeline failed:', err);
-                // Minimal fallback - just a simple box
-                sceneElements = [{
-                    type: 'rounded-box',
-                    position: [0, 0, 0],
-                    dimensions: [50, 20, 40],
-                    color: '#808080',
-                    material: 'plastic',
-                    name: 'body'
-                }];
+                // Use intelligent fallback that detects object type from description
+                sceneElements = fallbackScene(projectDescription);
                 outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
             }
         }

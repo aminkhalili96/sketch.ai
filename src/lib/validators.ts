@@ -92,15 +92,24 @@ const vec3Schema = z.preprocess((value) => {
     return [0, 0, 0];
 }, z.tuple([safeNumberSchema, safeNumberSchema, safeNumberSchema]));
 
+const typeNormalization = z.preprocess((val) => {
+    if (typeof val !== 'string') return val;
+    const lower = val.toLowerCase().replace(/_/g, '-');
+    if (lower === 'cube' || lower === 'rect') return 'box';
+    if (lower === 'tube' || lower === 'pipe') return 'cylinder';
+    if (lower === 'ball') return 'sphere';
+    return lower;
+}, z.enum(['box', 'rounded-box', 'cylinder', 'sphere', 'capsule']));
+
 export const sceneElementSchema = z.object({
-    type: z.enum(['box', 'rounded-box', 'cylinder', 'sphere', 'capsule']),
+    type: typeNormalization,
     position: vec3Schema,
     rotation: vec3Schema.optional(),
     dimensions: vec3Schema,
-    color: z.string(),
+    color: z.string().optional().default('#808080'),
     material: z.enum(['plastic', 'metal', 'glass', 'rubber']).optional(),
     name: z.string().optional(),
-    // Rounded box hints
+    // Rounded box hints - use safeNumberSchema to coerce strings
     radius: safeNumberSchema.optional(),
     smoothness: safeNumberSchema.optional(),
 });

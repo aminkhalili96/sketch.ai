@@ -49,7 +49,8 @@ export async function orchestrate3DGeneration(
         logs.push(`Vision skipped, inferred from description: ${visionAnalysis.objectType}`);
     } else {
         logs.push('Running vision analysis on sketch...');
-        visionAnalysis = await analyzeSketchVision(sketchImageBase64);
+        // Pass description for smart fallback
+        visionAnalysis = await analyzeSketchVision(sketchImageBase64, description);
         logs.push(`Vision analysis complete: ${visionAnalysis.objectType} - ${visionAnalysis.objectName}`);
         logs.push(`Identified ${visionAnalysis.mainParts.length} parts with confidence ${visionAnalysis.confidence}`);
     }
@@ -162,6 +163,7 @@ function inferFromDescription(description: string): VisionAnalysis {
     return {
         objectType,
         objectName: description.slice(0, 50),
+        structuralBlueprint: 'Inferred from text description: A standard object structure based on type ' + objectType,
         mainParts,
         suggestedColors,
         overallDimensions: { width: 50, height: 30, depth: 40 },

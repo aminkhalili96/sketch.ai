@@ -108,8 +108,11 @@ export function SceneRenderer({ sceneJson }: SceneRendererProps) {
 
     if (!parsed) {
         return (
-            <div className="flex items-center justify-center h-full text-red-500">
-                Failed to render 3D scene. Invalid Format.
+            <div className="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center">
+                <p className="font-semibold mb-2">Failed to render 3D scene. Invalid Format.</p>
+                <pre className="text-xs bg-red-50 p-2 rounded max-w-full overflow-auto text-left w-full h-32 border border-red-100">
+                    {sceneJson.slice(0, 500)}
+                </pre>
             </div>
         );
     }

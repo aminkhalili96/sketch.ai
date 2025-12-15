@@ -18,50 +18,60 @@ export interface StructurePlan {
     reasoning: string;
 }
 
-const STRUCTURE_PLANNER_PROMPT = `You are a 3D structure planner. Based on the vision analysis, create a detailed 3D structure plan.
+const STRUCTURE_PLANNER_PROMPT = `You are an expert 3D Structural Engineer.
+Your goal is to build a 3D model that EXACTLY matches the provided Structural Blueprint.
 
-Vision Analysis:
+Vision Analysis & Blueprint:
 {visionAnalysis}
 
 Project Description: {description}
 
-Create a complete 3D structure with precise positions and dimensions.
+## UNIVERSAL CONSTRUCTION PROTOCOL
+Follow these steps recursively to build ANY object:
 
-Rules:
-1. Center the main body at [0, 0, 0]
-2. Use millimeters for all dimensions
-3. Position child elements relative to center
-4. Ensure no floating parts - everything should connect
-5. Use appropriate shapes for each part type
-6. Apply colors from the suggested palette
-7. Include ALL parts identified in the vision analysis
+PHASE 1: THE CORE (Blockout)
+- Identify the "Core Volume" from the blueprint.
+- Place it at [0, 0, 0].
+- This is the anchor for all other parts.
 
-For electronics (PCB, enclosure):
-- Use rounded-box for PCB base
-- Use box for chips/ICs
-- Use cylinder for capacitors/LEDs
-- Use box/rounded-box for connectors
+PHASE 2: ATTACHMENTS (Skeleton)
+- Attach major limbs/components to the Core.
+- Calculate positions based on the Core's dimensions.
+- Example: If Core is 50mm wide, Left Arm x-position should be approx -30mm.
+- Ensure parts OVERLAP slightly to form a solid object.
 
-For organic shapes (toys, characters):
-- Use sphere for heads, eyes
-- Use capsule for bodies, limbs
-- Use sphere for ears, noses
+PHASE 3: DETAILING (Surface)
+- Add surface details (eyes, buttons, screens) as small shapes.
+- Position them on the surface of the parent part.
+
+## RULES
+1. Center main body at [0, 0, 0].
+2. Use specified colors from blueprint.
+3. ENSURE STRUCTURAL INTEGRITY: Parts must touch/intersect. No floating parts.
+4. Use primitive shapes: box, rounded-box, cylinder, sphere, capsule.
+5. Dimensions in millimeters.
 
 Return JSON:
 {
   "elements": [
     {
-      "id": "body",
-      "name": "main-body",
-      "type": "rounded-box",
+      "id": "core",
+      "name": "torso",
+      "type": "capsule",
       "position": [0, 0, 0],
-      "rotation": [0, 0, 0],
-      "dimensions": [50, 5, 40],
-      "color": "#228B22",
-      "material": "plastic"
+      "dimensions": [40, 60, 30],
+      "color": "#8B4513"
+    },
+    {
+      "id": "limb-1",
+      "name": "left-arm",
+      "type": "capsule",
+      "position": [-25, 10, 0],
+      "dimensions": [15, 40, 15],
+      "color": "#8B4513"
     }
   ],
-  "reasoning": "Created PCB-style base with components..."
+  "reasoning": "Built torso as core capsule. Attached arms to sides..."
 }
 
 Output ONLY valid JSON.`;

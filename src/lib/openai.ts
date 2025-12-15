@@ -46,3 +46,31 @@ export async function handleOpenAIError(error: unknown): Promise<never> {
 
     throw new OpenAIError('An unknown error occurred');
 }
+
+/**
+ * Retries an async operation with exponential backoff.
+ * @param operation The async operation to retry.
+ * @param retries Number of retries (default 3).
+ * @param delay Initial delay in ms (default 1000).
+ */
+export async function withRetry<T>(
+    operation: () => Promise<T>,
+    retries = 3,
+    delay = 1000
+): Promise<T> {
+    try {
+        return await operation();
+    } catch (error) {
+        if (retries <= 0) {
+            if (error instanceof Error) {
+                console.error(`Operation failed after retries: ${error.message}`);
+            }
+            throw error;
+        }
+
+        console.warn(`Operation failed, retrying in ${delay}ms... (${retries} retries left)`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        return withRetry(operation, retries - 1, delay * 2);
+    }
+}

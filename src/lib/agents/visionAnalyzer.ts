@@ -1,10 +1,11 @@
 // Vision Analyzer Agent - Extracts object structure from sketch image
-import { getOpenAIClient } from '@/lib/openai';
+import { getOpenAIClient, withRetry } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 
 export interface VisionAnalysis {
-    objectType: 'enclosure' | 'organic' | 'mechanical' | 'abstract';
+    objectType: 'enclosure' | 'organic' | 'mechanical' | 'abstract' | 'mixed';
     objectName: string;
+    structuralBlueprint: string; // New field for universal decomposition
     mainParts: Array<{
         name: string;
         shape: 'box' | 'cylinder' | 'sphere' | 'capsule' | 'rounded-box';
@@ -16,67 +17,107 @@ export interface VisionAnalysis {
     confidence: number;
 }
 
-const VISION_ANALYSIS_PROMPT = `Analyze this sketch/image and extract 3D modeling information.
+const VISION_ANALYSIS_PROMPT = `Analyze this sketch/image and create a UNIVERSAL STRUCTURAL BLUEPRINT for 3D modeling.
 
-Determine:
-1. What type of object is this?
-   - "enclosure": Electronics enclosure, PCB housing, device case
-   - "organic": Toy, plush, animal, character, organic shape
-   - "mechanical": Machine part, gear, bracket, structural component  
-   - "abstract": Art piece, abstract shape, unknown
+YOUR GOAL: Deconstruct the object into simple geometric primitives so a blind modeler could recreate it.
 
-2. What are the main parts/components visible?
-   For each part, specify:
-   - name: descriptive name (e.g., "body", "lid", "chip", "connector")
-   - shape: best primitive (box, cylinder, sphere, capsule, rounded-box)
-   - relativeSize: large/medium/small/tiny
-   - color: if visible, hex color
+1. What type of object is this? (enclosure, organic, mechanical, abstract, mixed)
 
-3. What colors are appropriate for this object?
+2. STRUCTURAL BLUEPRINT (Critical for Universal Generation):
+   Describe the object's anatomy step-by-step:
+   - "CORE VOLUME": What is the main central shape? (e.g. "A large central sphere", "A flat rectangular base")
+   - "ATTACHMENTS": What is connected to the core? (e.g. "Four cylindrical legs attached at 45 degrees")
+   - "DETAILS": Surface features? (e.g. "Two small buttons on top")
+   - Explain how parts connect/overlap.
 
-4. Approximate dimensions in millimeters
+3. List main parts with primitive shapes (box, cylinder, sphere, capsule, rounded-box).
+4. Suggest colors.
+5. Estimate dimensions (mm).
 
 Respond in JSON:
 {
-  "objectType": "enclosure",
-  "objectName": "Microchip Development Board",
-  "mainParts": [
-    {"name": "pcb-base", "shape": "rounded-box", "relativeSize": "large", "color": "#228B22"},
-    {"name": "main-chip", "shape": "box", "relativeSize": "medium", "color": "#1A1A1A"},
-    {"name": "pin-header", "shape": "box", "relativeSize": "small", "color": "#C0C0C0"}
-  ],
-  "suggestedColors": ["#228B22", "#1A1A1A", "#C0C0C0", "#FFD700"],
-  "overallDimensions": {"width": 50, "height": 10, "depth": 40},
-  "confidence": 0.85
+  "objectType": "organic",
+  "objectName": "Teddy Bear",
+  "structuralBlueprint": "The object consists of a large central capsule acting as the torso. A spherical head sits directly on top. Four smaller capsule limbs are attached to the torso's corners. Two small spherical ears are on the head.",
+  "mainParts": [ ... ],
+  "suggestedColors": ["#8B4513"],
+  "overallDimensions": {"width": 60, "height": 100, "depth": 40},
+  "confidence": 0.95
 }
 
-Be specific to what you SEE in the image. Do not assume or hallucinate parts that are not visible.
-Output ONLY valid JSON.`;
+Be specific. Do not assume. Output ONLY valid JSON.`;
 
-export async function analyzeSketchVision(imageBase64: string): Promise<VisionAnalysis> {
+// Helper to infer from description (moved from orchestrator logic or duplicated for robustness)
+function inferFromDescriptionFallback(description?: string): VisionAnalysis {
+    if (!description) {
+        return {
+            objectType: 'mixed',
+            objectName: 'Generic Object',
+            structuralBlueprint: 'A simple generic structure with a central body.',
+            mainParts: [{ name: 'body', shape: 'rounded-box', relativeSize: 'large' }],
+            suggestedColors: ['#808080', '#606060'],
+            overallDimensions: { width: 50, height: 50, depth: 50 },
+            confidence: 0.3
+        };
+    }
+
+    const lower = description.toLowerCase();
+    let objectType: VisionAnalysis['objectType'] = 'enclosure';
+    let blueprint = 'A standard enclosure with a body and lid.';
+    let parts: VisionAnalysis['mainParts'] = [{ name: 'body', shape: 'box', relativeSize: 'large' }];
+    let colors = ['#808080'];
+
+    if (/teddy|bear|plush|toy|animal|doll/i.test(lower)) {
+        objectType = 'organic';
+        blueprint = 'CORE VOLUME: Central capsule torso. ATTACHMENTS: Spherical head on top. Four capsule limbs. DETAILS: Ears, eyes, nose.';
+        parts = [
+            { name: 'torso', shape: 'capsule', relativeSize: 'large' },
+            { name: 'head', shape: 'sphere', relativeSize: 'large' },
+            { name: 'arm_L', shape: 'capsule', relativeSize: 'medium' },
+            { name: 'arm_R', shape: 'capsule', relativeSize: 'medium' },
+            { name: 'leg_L', shape: 'capsule', relativeSize: 'medium' },
+            { name: 'leg_R', shape: 'capsule', relativeSize: 'medium' }
+        ];
+        colors = ['#8B4513', '#A0522D'];
+    }
+
+    return {
+        objectType,
+        objectName: description.slice(0, 30),
+        structuralBlueprint: blueprint,
+        mainParts: parts,
+        suggestedColors: colors,
+        overallDimensions: { width: 60, height: 80, depth: 60 },
+        confidence: 0.4
+    };
+}
+
+export async function analyzeSketchVision(imageBase64: string, description?: string): Promise<VisionAnalysis> {
     const openai = getOpenAIClient();
 
     try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                {
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: VISION_ANALYSIS_PROMPT },
-                        {
-                            type: 'image_url',
-                            image_url: {
-                                url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
-                                detail: 'high'
+        const response = await withRetry(async () => {
+            return await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: VISION_ANALYSIS_PROMPT + (description ? `\n\nContext/Description: ${description}` : '') },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
+                                    detail: 'high'
+                                }
                             }
-                        }
-                    ]
-                }
-            ],
-            max_tokens: 1500,
-            response_format: { type: 'json_object' }
+                        ]
+                    }
+                ],
+                max_tokens: 1500,
+                response_format: { type: 'json_object' }
+            }, { timeout: 45000 }); // 45s timeout
         });
 
         const content = response.choices[0]?.message?.content;
@@ -88,25 +129,16 @@ export async function analyzeSketchVision(imageBase64: string): Promise<VisionAn
 
         // Validate and provide defaults
         return {
-            objectType: analysis.objectType || 'enclosure',
+            objectType: analysis.objectType || 'mixed',
             objectName: analysis.objectName || 'Unknown Object',
+            structuralBlueprint: analysis.structuralBlueprint || 'A generic object composed of basic shapes.',
             mainParts: Array.isArray(analysis.mainParts) ? analysis.mainParts : [],
             suggestedColors: Array.isArray(analysis.suggestedColors) ? analysis.suggestedColors : ['#808080'],
-            overallDimensions: analysis.overallDimensions || { width: 50, height: 20, depth: 40 },
+            overallDimensions: analysis.overallDimensions || { width: 50, height: 50, depth: 50 },
             confidence: typeof analysis.confidence === 'number' ? analysis.confidence : 0.5
         };
     } catch (error) {
         console.error('Vision analysis failed:', error);
-        // Return a generic fallback
-        return {
-            objectType: 'enclosure',
-            objectName: 'Generic Object',
-            mainParts: [
-                { name: 'body', shape: 'rounded-box', relativeSize: 'large' }
-            ],
-            suggestedColors: ['#808080', '#606060'],
-            overallDimensions: { width: 50, height: 20, depth: 40 },
-            confidence: 0.3
-        };
+        return inferFromDescriptionFallback(description);
     }
 }

@@ -26,17 +26,67 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
         setError
     } = useProjectStore();
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
+
+    // Helper to resize image using Canvas
+    const resizeImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1024;
+                    const MAX_HEIGHT = 1024;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    // Compress slightly to JPEG 0.8 to reduce payload further
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    };
+
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
         const file = acceptedFiles[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            const base64 = reader.result as string;
-            setPreview(base64);
-            setSketch(base64);
-        };
-        reader.readAsDataURL(file);
+        try {
+            // Resize if > 1MB roughly check or just always resize for safety
+            // Always resizing ensures consistent format for AI
+            const resizedBase64 = await resizeImage(file);
+            setPreview(resizedBase64);
+            setSketch(resizedBase64);
+        } catch (error) {
+            console.error("Image resize failed", error);
+            // Fallback to original
+            const reader = new FileReader();
+            reader.onload = () => {
+                setPreview(reader.result as string);
+                setSketch(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
     }, [setSketch]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
