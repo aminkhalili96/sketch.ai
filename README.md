@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sketch.ai
 
-## Getting Started
+> Transform hardware sketches into manufacturable 3D designs with AI
 
-First, run the development server:
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+
+## ✨ Features
+
+- **Sketch-to-3D**: Upload a sketch, get a 3D model
+- **Multi-Agent AI**: 5 specialized agents for accurate generation
+- **Vision Analysis**: GPT-4 Vision extracts parts directly from images
+- **Self-Correction**: Critic + Refiner agents fix errors automatically
+- **Multiple Outputs**: BOM, Assembly, Firmware, Schematic, OpenSCAD
+
+## 🚀 Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.example .env
+# Add your OPENAI_API_KEY to .env
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🏗️ Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+[Sketch] → Vision Agent → Structure Planner → Critic → Refiner → [3D Model]
+```
 
-## Learn More
+See [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) for details.
 
-To learn more about Next.js, take a look at the following resources:
+## 📁 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/                 # Next.js app router
+│   └── api/            # API routes
+│       ├── analyze/    # Sketch analysis
+│       ├── generate/   # Output generation
+│       └── agents/     # Agent endpoints
+├── components/         # React components
+├── lib/
+│   ├── agents/         # Multi-agent system
+│   ├── prompts.ts      # LLM prompts
+│   └── validators.ts   # Zod schemas
+├── stores/             # Zustand stores
+└── types/              # TypeScript types
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📖 Documentation
 
-## Deploy on Vercel
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](doc/ARCHITECTURE.md) | System design & data flow |
+| [API.md](doc/API.md) | REST API reference |
+| [AGENTS.md](doc/AGENTS.md) | Multi-agent system guide |
+| [PROMPTS.md](doc/PROMPTS.md) | LLM prompts documentation |
+| [INTERVIEW.md](doc/INTERVIEW.md) | Challenges & solutions |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🧪 Testing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test        # Run tests
+npm run lint    # Lint code
+```
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State**: Zustand
+- **AI**: OpenAI GPT-4o, GPT-4 Vision
+- **3D**: Three.js, React Three Fiber
+- **Validation**: Zod
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) for details.
