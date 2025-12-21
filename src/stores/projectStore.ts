@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Project, Message, AnalysisResult, ProjectOutputs, ProjectMetadata } from '@/types';
 
 interface ProjectState {
@@ -25,15 +25,16 @@ interface ProjectState {
 
     // Actions
     createProject: (name: string, description: string) => void;
-    setSketch: (base64: string) => void;
-    setAnalysis: (analysis: AnalysisResult) => void;
+    setSketch: (base64: string | null) => void;
+    setAnalysis: (analysis: AnalysisResult | null) => void;
     setOutputs: (outputs: ProjectOutputs) => void;
     replaceOutputs: (outputs: ProjectOutputs) => void;
-    setMetadata: (metadata: ProjectMetadata) => void;
+    setMetadata: (metadata: ProjectMetadata | null) => void;
     addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
     updateDescription: (description: string) => void;
     pushOutputsSnapshot: (note?: string) => void;
     undoLastSnapshot: () => void;
+    clearOutputSnapshots: () => void;
 
     // Loading states
     setAnalyzing: (loading: boolean) => void;
@@ -50,6 +51,22 @@ interface ProjectState {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
+const createMemoryStorage = () => {
+    const store = new Map<string, string>();
+    return {
+        getItem: (name: string) => store.get(name) ?? null,
+        setItem: (name: string, value: string) => {
+            store.set(name, value);
+        },
+        removeItem: (name: string) => {
+            store.delete(name);
+        },
+    };
+};
+const storage =
+    typeof window !== 'undefined'
+        ? createJSONStorage(() => window.localStorage)
+        : createJSONStorage(createMemoryStorage);
 
 const initialProject: Project = {
     id: generateId(),
@@ -82,6 +99,11 @@ export const useProjectStore = create<ProjectState>()(
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     },
+                    outputSnapshots: [],
+                    isAnalyzing: false,
+                    isGenerating: false,
+                    isChatting: false,
+                    isExporting: false,
                     error: null,
                 });
             },
@@ -92,7 +114,7 @@ export const useProjectStore = create<ProjectState>()(
                     set({
                         currentProject: {
                             ...project,
-                            sketchBase64: base64,
+                            sketchBase64: base64 ?? undefined,
                             updatedAt: new Date(),
                         },
                     });
@@ -105,7 +127,7 @@ export const useProjectStore = create<ProjectState>()(
                     set({
                         currentProject: {
                             ...project,
-                            analysis,
+                            analysis: analysis ?? undefined,
                             updatedAt: new Date(),
                         },
                     });
@@ -144,7 +166,7 @@ export const useProjectStore = create<ProjectState>()(
                     set({
                         currentProject: {
                             ...project,
-                            metadata,
+                            metadata: metadata ?? undefined,
                             updatedAt: new Date(),
                         },
                     });
@@ -215,6 +237,8 @@ export const useProjectStore = create<ProjectState>()(
                 }));
             },
 
+            clearOutputSnapshots: () => set({ outputSnapshots: [] }),
+
             setAnalyzing: (loading) => set({ isAnalyzing: loading }),
             setGenerating: (loading) => set({ isGenerating: loading }),
             setChatting: (loading) => set({ isChatting: loading }),
@@ -231,12 +255,18 @@ export const useProjectStore = create<ProjectState>()(
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     },
+                    outputSnapshots: [],
+                    isAnalyzing: false,
+                    isGenerating: false,
+                    isChatting: false,
+                    isExporting: false,
                     error: null,
                 });
             },
         }),
         {
             name: 'sketch-ai-project',
+            storage,
             partialize: (state) => ({
                 currentProject: state.currentProject,
             }),

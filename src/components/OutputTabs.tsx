@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProjectStore } from '@/stores/projectStore';
 import { SceneRenderer } from '@/components/SceneRenderer';
+import { buildProjectDescription } from '@/lib/projectDescription';
+import { parseBomTable } from '@/lib/bom';
 
 type OutputType = 'bom' | 'assembly' | 'firmware' | 'schematic' | 'openscad';
 type GenerateOutputType = OutputType | 'scene-json';
@@ -27,6 +29,7 @@ export function OutputTabs() {
     const [copiedTab, setCopiedTab] = useState<string | null>(null);
     const [isCompiling, setIsCompiling] = useState(false);
     const [stlDownloadUrl, setStlDownloadUrl] = useState<string | null>(null);
+    const stlUrlRef = useRef<string | null>(null);
 
     const {
         currentProject,
@@ -41,6 +44,29 @@ export function OutputTabs() {
 
     const outputs = currentProject?.outputs || {};
     const hasAnyOutput = Object.values(outputs).some(Boolean);
+    const projectDescription =
+        buildProjectDescription(currentProject?.description, currentProject?.analysis?.summary) ||
+        'Hardware project';
+
+    useEffect(() => {
+        stlUrlRef.current = stlDownloadUrl;
+    }, [stlDownloadUrl]);
+
+    useEffect(() => {
+        return () => {
+            if (stlUrlRef.current) {
+                URL.revokeObjectURL(stlUrlRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        setStlDownloadUrl((prev) => {
+            if (!prev) return prev;
+            URL.revokeObjectURL(prev);
+            return null;
+        });
+    }, [outputs.openscad]);
 
     const handleGenerate = async (types: OutputType[]) => {
         if (!currentProject?.description && !currentProject?.analysis) {
@@ -62,7 +88,7 @@ export function OutputTabs() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    projectDescription: currentProject.description || currentProject.analysis?.summary || 'Hardware project',
+                    projectDescription,
                     analysisContext: currentProject.analysis,
                     outputTypes: outputTypesToRequest,
                     sketchImage: currentProject.sketchBase64, // Pass sketch for vision-to-3D
@@ -158,7 +184,12 @@ export function OutputTabs() {
             const byteArray = new Uint8Array(byteNumbers);
             const blob = new Blob([byteArray], { type: 'application/sla' });
             const url = URL.createObjectURL(blob);
-            setStlDownloadUrl(url);
+            setStlDownloadUrl((prev) => {
+                if (prev) {
+                    URL.revokeObjectURL(prev);
+                }
+                return url;
+            });
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Compilation failed');
         } finally {
@@ -174,6 +205,107 @@ export function OutputTabs() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+    };
+
+    const renderMarkdownContent = (content: string) => (
+        <div className="prose prose-sm max-w-none prose-neutral">
+            <ReactMarkdown
+                components={{
+                    code: ({ className, children, ...props }) => {
+                        const match = /language-(\w+)/.exec(className || '');
+                        const isInline = !match;
+                        return isInline ? (
+                            <code className="px-1 py-0.5 rounded bg-neutral-100 text-sm font-mono" {...props}>
+                                {children}
+                            </code>
+                        ) : (
+                            <SyntaxHighlighter
+                                language={match[1]}
+                                style={oneLight}
+                                customStyle={{ borderRadius: '0.5rem', fontSize: '13px' }}
+                            >
+                                {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                        );
+                    },
+                    p: ({ children }) => <p className="m-0">{children}</p>,
+                }}
+            >
+                {content}
+            </ReactMarkdown>
+        </div>
+    );
+
+    const renderBomContent = (content: string) => {
+        const parsed = parseBomTable(content);
+        if (!parsed) {
+            return renderMarkdownContent(content);
+        }
+
+        const numericHeaders = new Set(['qty', 'unit price', 'ext price', 'price', 'cost']);
+        const isNumericColumn = (header: string) => {
+            const lowered = header.toLowerCase();
+            return Array.from(numericHeaders).some((key) => lowered.includes(key));
+        };
+
+        const isMonoColumn = (header: string) => {
+            const lowered = header.toLowerCase();
+            return lowered.includes('mpn') || lowered.includes('part') || lowered.includes('sku');
+        };
+
+        return (
+            <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+                <table className="min-w-full text-xs">
+                    <thead className="bg-neutral-50 text-neutral-600">
+                        <tr>
+                            {parsed.headers.map((header, idx) => (
+                                <th
+                                    key={`${header}-${idx}`}
+                                    className={`px-3 py-2 text-left font-medium border-b border-neutral-200 ${isNumericColumn(header) ? 'text-right' : ''}`}
+                                >
+                                    {header}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                        {parsed.rows.map((row, rowIndex) => (
+                            <tr key={`row-${rowIndex}`} className="hover:bg-neutral-50">
+                                {row.map((cell, colIndex) => {
+                                    const header = parsed.headers[colIndex] ?? '';
+                                    const numeric = isNumericColumn(header);
+                                    const mono = isMonoColumn(header);
+                                    return (
+                                        <td
+                                            key={`cell-${rowIndex}-${colIndex}`}
+                                            className={`px-3 py-2 align-top ${numeric ? 'text-right' : ''} ${mono ? 'font-mono text-[11px]' : ''}`}
+                                        >
+                                            <ReactMarkdown
+                                                components={{
+                                                    p: ({ children }) => <span>{children}</span>,
+                                                    a: ({ children, ...props }) => (
+                                                        <a
+                                                            {...props}
+                                                            className="text-blue-600 hover:text-blue-700 underline"
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                        >
+                                                            {children}
+                                                        </a>
+                                                    ),
+                                                }}
+                                            >
+                                                {cell || '-'}
+                                            </ReactMarkdown>
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
     };
 
     const renderContent = (content: string | undefined, type: OutputType) => {
@@ -193,6 +325,8 @@ export function OutputTabs() {
             );
         }
 
+        const body = type === 'bom' ? renderBomContent(content) : renderMarkdownContent(content);
+
         return (
             <div className="relative">
                 <button
@@ -201,7 +335,6 @@ export function OutputTabs() {
                 >
                     {copiedTab === type ? 'Copied!' : 'Copy'}
                 </button>
-
                 {type === 'firmware' ? (
                     <SyntaxHighlighter
                         language="cpp"
@@ -217,31 +350,7 @@ export function OutputTabs() {
                         {content}
                     </SyntaxHighlighter>
                 ) : (
-                    <div className="prose prose-sm max-w-none prose-neutral">
-                        <ReactMarkdown
-                            components={{
-                                code: ({ className, children, ...props }) => {
-                                    const match = /language-(\w+)/.exec(className || '');
-                                    const isInline = !match;
-                                    return isInline ? (
-                                        <code className="px-1 py-0.5 rounded bg-neutral-100 text-sm font-mono" {...props}>
-                                            {children}
-                                        </code>
-                                    ) : (
-                                        <SyntaxHighlighter
-                                            language={match[1]}
-                                            style={oneLight}
-                                            customStyle={{ borderRadius: '0.5rem', fontSize: '13px' }}
-                                        >
-                                            {String(children).replace(/\n$/, '')}
-                                        </SyntaxHighlighter>
-                                    );
-                                },
-                            }}
-                        >
-                            {content}
-                        </ReactMarkdown>
-                    </div>
+                    body
                 )}
             </div>
         );

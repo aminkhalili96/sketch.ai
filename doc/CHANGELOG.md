@@ -14,11 +14,16 @@ All notable changes to Sketch.ai are documented here.
 - Removed hardcoded teddy bear fallbacks
 - Colors now preserved from LLM instead of forced white/grey
 - Scene generation uses orchestrator instead of single prompt
+- 3D generation now merges analysis summaries with user notes to prevent color-only overrides
+- BOM generation now enforces table-only output with production-grade columns
 
 ### Fixed
 - PCB images no longer generate teddy bears
 - 3D models now include all body parts (eyes, ears, etc.)
 - Colors match sketch input
+- Organic objects no longer regress to enclosure boxes on regeneration
+- BOM rendering now parses and displays structured tables
+- Analyze endpoint now falls back to description-only analysis when vision refuses
 
 ---
 

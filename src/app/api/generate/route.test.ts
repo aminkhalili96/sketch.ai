@@ -31,6 +31,7 @@ vi.mock('@/lib/prompts', () => ({
 
 describe('POST /api/generate', () => {
     beforeEach(() => {
+        mockCreate.mockReset();
         vi.clearAllMocks();
     });
 
@@ -99,7 +100,7 @@ describe('POST /api/generate', () => {
     });
 
     it('should generate valid scene-json output', async () => {
-        mockCreate.mockResolvedValueOnce({
+        const planResponse = {
             choices: [{
                 message: {
                     content: JSON.stringify({
@@ -117,7 +118,30 @@ describe('POST /api/generate', () => {
                     })
                 }
             }]
-        });
+        };
+
+        const critiqueResponse = {
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        score: 8,
+                        isAcceptable: true,
+                        matchesInput: true,
+                        issues: [],
+                        missingParts: [],
+                        extraneousParts: [],
+                        colorIssues: [],
+                        proportionIssues: [],
+                        summary: 'Looks good'
+                    })
+                }
+            }]
+        };
+
+        mockCreate
+            .mockResolvedValueOnce(planResponse)
+            .mockResolvedValueOnce(critiqueResponse)
+            .mockResolvedValueOnce(critiqueResponse);
 
         const body = {
             projectDescription: 'A simple cube',

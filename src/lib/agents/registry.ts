@@ -13,6 +13,8 @@ import {
 import { beautifyScene, computeSceneBounds, fallbackScene, normalizeSceneColors, parseSceneElements } from '@/lib/scene';
 import { fallbackOpenSCAD } from '@/lib/openscad';
 import { infer3DKind } from '@/lib/projectKind';
+import { buildProjectDescription } from '@/lib/projectDescription';
+import { normalizeBomMarkdown } from '@/lib/bom';
 import type {
     AgentPlan,
     AgentTask,
@@ -154,7 +156,11 @@ export async function executeAgentTask(
     shared: { sceneElements?: ReturnType<typeof fallbackScene> }
 ): Promise<AgentExecutionResult> {
     const { components, features } = buildContextStrings(ctx);
-    const description = ctx.description || ctx.analysis?.summary || 'Hardware project';
+    const description =
+        buildProjectDescription(ctx.description, ctx.analysis?.summary) ||
+        ctx.description ||
+        ctx.analysis?.summary ||
+        'Hardware project';
 
     const current = ctx.outputs?.[task.outputType];
 
@@ -165,13 +171,16 @@ export async function executeAgentTask(
     if (task.outputType === 'scene-json') {
         const kind3d = infer3DKind(description, ctx.analysis);
         const template = kind3d === 'object' ? SCENE_OBJECT_PROMPT : SCENE_GENERATION_PROMPT;
+        const paletteHint = kind3d === 'enclosure'
+            ? 'Important: Use a white/grey palette for the main enclosure/body (avoid near-black plastics).'
+            : '';
         const prompt = [
             fillPromptTemplate(template, { description, components, features }),
             '',
             `User instruction: ${task.instruction}`,
             '',
-            'Important: Use a white/grey palette for the main enclosure/body (avoid near-black plastics).',
-        ].join('\n');
+            paletteHint,
+        ].filter(Boolean).join('\n');
 
         const response = await openai.chat.completions.create({
             model: 'gpt-4o',
@@ -185,7 +194,8 @@ export async function executeAgentTask(
 
         const content = response.choices[0]?.message?.content;
         if (!content) {
-            const scene = normalizeSceneColors(beautifyScene(fallbackScene(description), description));
+            const baseScene = shared.sceneElements ?? fallbackScene(description);
+            const scene = normalizeSceneColors(beautifyScene(baseScene, description));
             shared.sceneElements = scene;
             return {
                 outputType: 'scene-json',
@@ -196,7 +206,8 @@ export async function executeAgentTask(
         }
 
         const parsed = parseSceneElements(content);
-        const scene = normalizeSceneColors(beautifyScene(parsed ?? fallbackScene(description), description));
+        const baseScene = parsed ?? shared.sceneElements ?? fallbackScene(description);
+        const scene = normalizeSceneColors(beautifyScene(baseScene, description));
         shared.sceneElements = scene;
         return {
             outputType: 'scene-json',
@@ -282,7 +293,7 @@ export async function executeAgentTask(
                 ? `Existing BOM (update this, preserve table structure):\n\n${current}`
                 : '',
             '',
-            'Output ONLY the updated BOM in Markdown (no extra commentary).'
+            'Output ONLY the BOM table in Markdown (no extra commentary). Preserve the header and separator row exactly.'
         ].filter(Boolean).join('\n');
 
         const response = await openai.chat.completions.create({
@@ -295,9 +306,10 @@ export async function executeAgentTask(
         });
 
         const content = response.choices[0]?.message?.content;
+        const fallbackBom = isNonEmptyString(current) ? normalizeBomMarkdown(current) : '';
         return {
             outputType: 'bom',
-            content: content || (isNonEmptyString(current) ? current : ''),
+            content: content ? normalizeBomMarkdown(content) : fallbackBom,
             summary: updateOrRegenerate === 'update' ? 'Updated BOM' : 'Generated BOM',
         };
     }

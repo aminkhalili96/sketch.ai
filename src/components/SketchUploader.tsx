@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
+import NextImage from 'next/image';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,10 +22,25 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
         setSketch,
         updateDescription,
         setAnalysis,
+        replaceOutputs,
+        setMetadata,
+        clearOutputSnapshots,
         setAnalyzing,
         isAnalyzing,
         setError
     } = useProjectStore();
+
+    useEffect(() => {
+        setPreview(currentProject?.sketchBase64 ?? null);
+        setDescription(currentProject?.description ?? '');
+    }, [currentProject?.description, currentProject?.sketchBase64]);
+
+    const resetGeneratedData = useCallback(() => {
+        setAnalysis(null);
+        replaceOutputs({});
+        setMetadata(null);
+        clearOutputSnapshots();
+    }, [clearOutputSnapshots, replaceOutputs, setAnalysis, setMetadata]);
 
 
     // Helper to resize image using Canvas
@@ -71,6 +87,7 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
         const file = acceptedFiles[0];
         if (!file) return;
 
+        resetGeneratedData();
         try {
             // Resize if > 1MB roughly check or just always resize for safety
             // Always resizing ensures consistent format for AI
@@ -87,7 +104,7 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
             };
             reader.readAsDataURL(file);
         }
-    }, [setSketch]);
+    }, [resetGeneratedData, setSketch]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -133,6 +150,15 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
     const handleClear = () => {
         setPreview(null);
         setDescription('');
+        updateDescription('');
+        setSketch(null);
+        resetGeneratedData();
+    };
+
+    const handleDescriptionChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = event.target.value;
+        setDescription(value);
+        updateDescription(value);
     };
 
     return (
@@ -188,11 +214,14 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
                         exit={{ opacity: 0 }}
                         className="space-y-4"
                     >
-                        <div className="relative rounded-xl overflow-hidden bg-neutral-50 border border-neutral-200">
-                            <img
+                        <div className="relative h-40 rounded-xl overflow-hidden bg-neutral-50 border border-neutral-200">
+                            <NextImage
                                 src={preview}
                                 alt="Uploaded sketch"
-                                className="w-full h-40 object-contain"
+                                fill
+                                sizes="(max-width: 768px) 100vw, 640px"
+                                className="object-contain"
+                                unoptimized
                             />
                             <button
                                 onClick={handleClear}
@@ -207,7 +236,7 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
                         <Textarea
                             placeholder="Describe your hardware idea (optional)"
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
+                            onChange={handleDescriptionChange}
                             className="bg-neutral-50 border-neutral-200 text-neutral-900 placeholder:text-neutral-400 resize-none rounded-xl"
                             rows={2}
                         />

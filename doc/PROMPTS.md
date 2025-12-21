@@ -38,22 +38,42 @@ Defines the AI assistant persona - "Sketch.AI, an expert hardware design assista
 
 ---
 
+#### Description-Only Analysis Prompt
+
+**Used by:** `/api/analyze` fallback
+
+**Purpose:** Provide analysis using the user's text description when image analysis fails.
+
+**Key instructions:**
+- Use ONLY the description (no image assumptions)
+- Keep component lists short if the description is vague
+- Ask clarifying questions
+
 ### Generation Prompts
 
 #### Scene Generation Prompt
 
-**Used by:** Structure Planner (for enclosures)
+**Used by:** SceneJsonAgent + Structure Planner (for enclosures)
 
 **Key instructions:**
 - Generate JSON with elements array
 - Use rounded-box as default
 - Include: body, lid, mounting holes, ports
 - Use production-quality aesthetics
-- White/grey palette for neutral style
+- White/grey palette for neutral style (enclosures only)
+
+#### Scene Object Prompt
+
+**Used by:** SceneJsonAgent (for toys/organic objects)
+
+**Key instructions:**
+- Use ONLY spheres/capsules
+- Include all required body parts for plush toys
+- Preserve warm brown palettes (unless user specifies otherwise)
 
 #### OpenSCAD Generation Prompt
 
-**Used by:** Generate API (openscad output)
+**Used by:** Generate API (enclosures)
 
 **Key instructions:**
 - Generate valid OpenSCAD code
@@ -61,16 +81,31 @@ Defines the AI assistant persona - "Sketch.AI, an expert hardware design assista
 - Use parameterized dimensions
 - Add comments
 
+#### OpenSCAD Object Prompt
+
+**Used by:** Generate API (toys/organic objects)
+
+**Key instructions:**
+- Build organic silhouettes with primitives + hull()
+- Keep watertight single solid
+- Use hand-sized object defaults
+
 ---
 
 ### BOM & Assembly Prompts
 
 #### BOM Generation Prompt
 
-**Template variables:** `{description}`, `{components}`, `{requirements}`
+**Template variables:** `{description}`, `{components}`, `{requirements}`, `{pricingContext}`
 
-**Output format:** Markdown table with columns:
-- Item, Part Number, Description, Qty, Unit Price, Supplier, Purchase Link, Notes
+**Output format:** Markdown table ONLY (no prose). Required columns:
+- Item, MPN, Manufacturer, Description, Qty, Unit Price (USD), Ext Price (USD), Supplier, Supplier SKU, Link, Notes
+
+**Rules:**
+- One part per row
+- Use `-` for unknowns
+- Ext Price = Qty * Unit Price
+- Final TOTAL row with Ext Price sum
 
 #### Assembly Instructions Prompt
 

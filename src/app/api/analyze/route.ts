@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
-import { SYSTEM_PROMPT, VISION_ANALYSIS_PROMPT } from '@/lib/prompts';
+import { DESCRIPTION_ANALYSIS_PROMPT, SYSTEM_PROMPT, VISION_ANALYSIS_PROMPT } from '@/lib/prompts';
 import { analyzeRequestSchema, analysisResultSchema } from '@/lib/validators';
 import type { AnalyzeResponse, AnalysisResult } from '@/types';
 
@@ -27,6 +27,87 @@ function explainEmptyChoice(choice: unknown): string {
 
     if (finishReason) return `AI returned an empty response (finish_reason=${finishReason}).`;
     return 'AI returned an empty response.';
+}
+
+type OpenAIClient = ReturnType<typeof getOpenAIClient>;
+
+async function analyzeFromDescription(
+    openai: OpenAIClient,
+    description: string
+): Promise<AnalysisResult | null> {
+    try {
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                {
+                    role: 'user',
+                    content: `${DESCRIPTION_ANALYSIS_PROMPT}\n\nDescription: ${description}`
+                }
+            ],
+            max_tokens: 1500,
+            response_format: { type: 'json_object' }
+        });
+
+        const content = response.choices?.[0]?.message?.content;
+        if (!content) return null;
+
+        const rawAnalysis = JSON.parse(content);
+        const analysisValidation = analysisResultSchema.safeParse(rawAnalysis);
+        if (!analysisValidation.success) return null;
+
+        return analysisValidation.data;
+    } catch (error) {
+        console.warn('Analyze: description-only analysis failed', error);
+        return null;
+    }
+}
+
+function buildLocalFallback(description?: string): AnalysisResult {
+    const trimmed = description?.trim() ?? '';
+    const shortDescription =
+        trimmed.length > 160 ? `${trimmed.slice(0, 157)}...` : trimmed;
+
+    if (!shortDescription) {
+        return analysisResultSchema.parse({
+            identifiedComponents: [],
+            suggestedFeatures: [],
+            complexityScore: 3,
+            complexity: 'simple',
+            questions: [
+                'Can you add a short description of the sketch?',
+                'What electronics or interactivity do you want?',
+                'Any size or material constraints?'
+            ],
+            summary: 'Image analysis was unavailable. Add a short description to continue.'
+        });
+    }
+
+    return analysisResultSchema.parse({
+        identifiedComponents: [],
+        suggestedFeatures: ['Consider adding sensors or outputs if interactivity is needed.'],
+        complexityScore: 4,
+        complexity: 'moderate',
+        questions: [
+            'What size should the final object be?',
+            'Any required electronics, sensors, or motion?',
+            'Preferred materials or finish?'
+        ],
+        summary: `Based on the description, this appears to be ${shortDescription}. Image analysis was unavailable.`
+    });
+}
+
+async function buildFallbackAnalysis(
+    openai: OpenAIClient,
+    description?: string
+): Promise<AnalysisResult> {
+    const trimmed = description?.trim() ?? '';
+    if (trimmed) {
+        const descriptionOnly = await analyzeFromDescription(openai, trimmed);
+        if (descriptionOnly) return descriptionOnly;
+    }
+
+    return buildLocalFallback(description);
 }
 
 export async function POST(request: NextRequest) {
@@ -77,6 +158,7 @@ export async function POST(request: NextRequest) {
         const firstChoice = response.choices?.[0];
         const content = firstChoice?.message?.content;
         if (!content) {
+            const reason = explainEmptyChoice(firstChoice);
             try {
                 const msg = firstChoice?.message as unknown as Record<string, unknown> | undefined;
                 const toolCalls = Array.isArray(msg?.tool_calls) ? msg?.tool_calls.length : 0;
@@ -85,14 +167,16 @@ export async function POST(request: NextRequest) {
                     finishReason: (firstChoice as unknown as { finish_reason?: unknown } | undefined)?.finish_reason,
                     hasRefusal: refusal,
                     toolCalls,
+                    reason
                 });
             } catch {
                 // Ignore logging failures.
             }
-            return NextResponse.json<AnalyzeResponse>(
-                { success: false, error: explainEmptyChoice(firstChoice) },
-                { status: 500 }
-            );
+            const fallbackAnalysis = await buildFallbackAnalysis(openai, description);
+            return NextResponse.json<AnalyzeResponse>({
+                success: true,
+                analysis: fallbackAnalysis
+            });
         }
 
         const rawAnalysis = JSON.parse(content);

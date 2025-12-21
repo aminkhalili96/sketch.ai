@@ -13,6 +13,7 @@ http://localhost:3000/api
 ### POST /api/analyze
 
 Analyzes a sketch image to extract components and features.
+If vision analysis fails, the endpoint falls back to description-only analysis.
 
 **Request:**
 ```json
@@ -56,7 +57,7 @@ Generates outputs (3D model, BOM, firmware, etc.) from project description.
 **Output Types:**
 - `scene-json` - 3D scene in JSON format
 - `openscad` - OpenSCAD code
-- `bom` - Bill of Materials
+- `bom` - Bill of Materials (table-only Markdown)
 - `assembly` - Assembly instructions
 - `firmware` - Arduino/ESP code
 - `schematic` - Circuit description

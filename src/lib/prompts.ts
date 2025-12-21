@@ -40,26 +40,48 @@ Respond in JSON format:
   "summary": "Brief description of what this appears to be"
 }`;
 
-export const BOM_GENERATION_PROMPT = `Generate a complete Bill of Materials for this hardware project.
+export const DESCRIPTION_ANALYSIS_PROMPT = `The image could not be analyzed. Use ONLY the user's text description to provide a structured assessment.
+
+If the description is vague, keep the component list short and ask clarifying questions.
+
+Respond in JSON format:
+{
+  "identifiedComponents": ["component1", "component2"],
+  "suggestedFeatures": ["feature1", "feature2"],
+  "complexityScore": 5,
+  "complexity": "moderate",
+  "questions": ["question1", "question2"],
+  "summary": "Brief description of what this appears to be based on the description"
+}`;
+
+export const BOM_GENERATION_PROMPT = `Generate a production-grade Bill of Materials (BOM) for this hardware project.
 
 Project Description: {description}
 Identified Components: {components}
 Additional Requirements: {requirements}
+Pricing Context: {pricingContext}
 
-Create a detailed Markdown table with these columns:
-| Item | Part Number | Description | Qty | Unit Price (USD) | Supplier | Purchase Link | Notes |
+Output ONLY a Markdown table (no prose, no headings, no extra commentary).
+The table MUST include this exact header and separator row:
+| Item | MPN | Manufacturer | Description | Qty | Unit Price (USD) | Ext Price (USD) | Supplier | Supplier SKU | Link | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+Rules:
+- One part per row (no wrapped/multi-line rows).
+- Use "-" for unknown fields.
+- Ext Price = Qty * Unit Price (USD).
+- Use a single Markdown link in the Link column: [Link](https://...)
+- Add a final TOTAL row with Item="TOTAL" and the Ext Price sum.
 
 Include:
 - All electronic components (ICs, resistors, capacitors, connectors)
 - Mechanical parts (enclosure, fasteners, standoffs)
 - Power components (battery, charging circuit, regulators)
-- Optional enhancements (clearly marked as optional)
+- Optional enhancements (mark in Notes)
 
 Provide:
-- At least one alternative for expensive components
-- Total estimated cost at the bottom
-- Notes about lead times for specialty components
-- Links to datasheets for key ICs`;
+- At least one alternative for expensive components (as a separate row)
+- Notes about lead times or substitutions in the Notes column`;
 
 export const ASSEMBLY_INSTRUCTIONS_PROMPT = `Create comprehensive assembly instructions for this hardware project.
 

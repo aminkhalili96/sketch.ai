@@ -14,14 +14,27 @@
 
 ---
 
+### "AI refused to answer"
+
+**Cause:** Vision model returned an empty/refusal response.
+
+**Solutions:**
+1. Add a short text description (the system will fall back to description-only analysis)
+2. Re-upload a clearer, higher-contrast sketch
+3. Avoid overly large or blurry images
+
+---
+
 ### 3D Model Shows Wrong Object Type
 
 **Cause:** Vision analysis misidentified the object.
 
 **Solutions:**
 1. Re-analyze the sketch
-2. Add description clarifying the object type
+2. Add description clarifying the object type (e.g., "teddy bear") in addition to color notes
 3. Use clearer sketch with distinct features
+
+**Note:** Short color-only notes (e.g., "brown") are treated as user notes. If the model still flips to a box, re-run analysis or include the object type explicitly.
 
 ---
 
@@ -44,6 +57,17 @@
 1. Ensure sketch has clear, distinct colors
 2. Add description mentioning colors: "brown teddy bear"
 3. Colors should be preserved if LLM generates valid hex
+
+---
+
+### BOM Looks Like Plain Text
+
+**Cause:** LLM output includes prose or malformed Markdown tables.
+
+**Solutions:**
+1. Regenerate the BOM (it should now return a strict table-only output)
+2. Ensure the prompt asks for a specific object type plus requirements
+3. Check the Link column uses `[Link](https://...)` format
 
 ---
 

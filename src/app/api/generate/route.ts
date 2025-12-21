@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
 import { searchComponentPrice } from '@/lib/tavily';
-import { SYSTEM_PROMPT, BOM_GENERATION_PROMPT, ASSEMBLY_INSTRUCTIONS_PROMPT, FIRMWARE_GENERATION_PROMPT, OPENSCAD_GENERATION_PROMPT, fillPromptTemplate } from '@/lib/prompts';
+import {
+    SYSTEM_PROMPT,
+    BOM_GENERATION_PROMPT,
+    ASSEMBLY_INSTRUCTIONS_PROMPT,
+    FIRMWARE_GENERATION_PROMPT,
+    OPENSCAD_GENERATION_PROMPT,
+    OPENSCAD_OBJECT_PROMPT,
+    fillPromptTemplate,
+} from '@/lib/prompts';
 import { generateRequestSchema } from '@/lib/validators';
 import type { GenerateResponse, ProjectOutputs, ProjectMetadata } from '@/types';
-import { computeSceneBounds, normalizeSceneColors, fallbackScene } from '@/lib/scene';
+import { computeSceneBounds, normalizeSceneColors, fallbackScene, sanitizeSceneElements } from '@/lib/scene';
 import { fallbackOpenSCAD } from '@/lib/openscad';
 import { orchestrate3DGeneration } from '@/lib/agents';
+import { buildProjectDescription } from '@/lib/projectDescription';
+import { infer3DKind } from '@/lib/projectKind';
+import { normalizeBomMarkdown } from '@/lib/bom';
 
 export async function POST(request: NextRequest) {
     try {
@@ -22,6 +33,8 @@ export async function POST(request: NextRequest) {
         }
 
         const { projectDescription, analysisContext, outputTypes, sketchImage } = validationResult.data;
+        const mergedDescription =
+            buildProjectDescription(projectDescription, analysisContext?.summary) || projectDescription;
         const uniqueOutputTypes = Array.from(new Set(outputTypes));
 
         const openai = getOpenAIClient();
@@ -50,7 +63,7 @@ export async function POST(request: NextRequest) {
                 // Use the new multi-agent orchestrator
                 const result = await orchestrate3DGeneration(
                     sketchImage, // Pass the sketch image for vision analysis
-                    projectDescription,
+                    mergedDescription,
                     { maxIterations: 2, minAcceptableScore: 7 }
                 );
 
@@ -65,21 +78,16 @@ export async function POST(request: NextRequest) {
                 result.logs.forEach(log => console.log('[Agent]', log));
 
                 // Convert to scene elements format
-                sceneElements = normalizeSceneColors(result.scene.map(el => ({
-                    type: el.type,
-                    position: el.position,
-                    rotation: el.rotation,
-                    dimensions: el.dimensions,
-                    color: el.color,
-                    material: el.material,
-                    name: el.name
-                })));
+                const kind3d = infer3DKind(mergedDescription, analysisContext);
+                const sanitized = sanitizeSceneElements(result.scene, { kind: kind3d });
+                const baseScene = sanitized.length > 0 ? sanitized : fallbackScene(mergedDescription);
+                sceneElements = normalizeSceneColors(baseScene);
 
                 outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
             } catch (err) {
                 console.error('Agent pipeline failed:', err);
                 // Use intelligent fallback that detects object type from description
-                sceneElements = fallbackScene(projectDescription);
+                sceneElements = fallbackScene(mergedDescription);
                 outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
             }
         }
@@ -108,7 +116,7 @@ export async function POST(request: NextRequest) {
                     }
 
                     prompt = fillPromptTemplate(BOM_GENERATION_PROMPT, {
-                        description: projectDescription,
+                        description: mergedDescription,
                         components,
                         requirements: features,
                         pricingContext: pricingContext ? `Real-time pricing data:\n${pricingContext}` : ''
@@ -117,7 +125,7 @@ export async function POST(request: NextRequest) {
 
                 case 'assembly':
                     prompt = fillPromptTemplate(ASSEMBLY_INSTRUCTIONS_PROMPT, {
-                        description: projectDescription,
+                        description: mergedDescription,
                         // Note: In parallel mode, we don't have the bom yet, so we pass a placeholder or the components list
                         bom: 'See Components List',
                     });
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
 
                 case 'firmware':
                     prompt = fillPromptTemplate(FIRMWARE_GENERATION_PROMPT, {
-                        description: projectDescription,
+                        description: mergedDescription,
                         mcu: 'Arduino-compatible (ESP32 recommended)',
                         components,
                         features,
@@ -133,7 +141,7 @@ export async function POST(request: NextRequest) {
                     break;
 
                 case 'schematic':
-                    prompt = `Generate a text-based schematic description for: ${projectDescription}
+                    prompt = `Generate a text-based schematic description for: ${mergedDescription}
            
 Components: ${components}
 
@@ -160,7 +168,7 @@ Describe the circuit connections in detail, including:
 
                 const content = response.choices[0]?.message?.content;
                 if (content) {
-                    outputs[outputType] = content;
+                    outputs[outputType] = outputType === 'bom' ? normalizeBomMarkdown(content) : content;
                 }
             } catch (err) {
                 console.error(`Failed to generate ${outputType}:`, err);
@@ -170,12 +178,16 @@ Describe the circuit connections in detail, including:
 
         if (uniqueOutputTypes.includes('openscad')) {
             const bounds = sceneElements ? computeSceneBounds(sceneElements as Parameters<typeof computeSceneBounds>[0]) : null;
+            const kind3d = infer3DKind(mergedDescription, analysisContext);
             const dimsHint = bounds
                 ? `Derived from 3D scene bounds: ~${Math.ceil(bounds.width)}x${Math.ceil(bounds.depth)}x${Math.ceil(bounds.height)}mm (W x D x H).`
-                : 'Auto-size based on components (typical: 80x50x30mm).';
+                : kind3d === 'object'
+                    ? 'Default to a hand-sized object (e.g. ~200mm tall for a small plush/toy).'
+                    : 'Auto-size based on components (typical: 80x50x30mm).';
 
-            const prompt = fillPromptTemplate(OPENSCAD_GENERATION_PROMPT, {
-                description: projectDescription,
+            const template = kind3d === 'object' ? OPENSCAD_OBJECT_PROMPT : OPENSCAD_GENERATION_PROMPT;
+            const prompt = fillPromptTemplate(template, {
+                description: mergedDescription,
                 components,
                 features,
                 dimensions: dimsHint,
@@ -195,11 +207,11 @@ Describe the circuit connections in detail, including:
                 if (content) {
                     outputs.openscad = content;
                 } else {
-                    outputs.openscad = fallbackOpenSCAD(projectDescription, bounds);
+                    outputs.openscad = fallbackOpenSCAD(mergedDescription, bounds);
                 }
             } catch (err) {
                 console.error('Failed to generate openscad:', err);
-                outputs.openscad = fallbackOpenSCAD(projectDescription, bounds);
+                outputs.openscad = fallbackOpenSCAD(mergedDescription, bounds);
             }
         }
 

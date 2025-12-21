@@ -57,7 +57,7 @@ export async function orchestrate3DGeneration(
 
     // Step 2: Structure Planning
     logs.push('Planning 3D structure...');
-    let structurePlan = await planStructure(visionAnalysis, description);
+    const structurePlan = await planStructure(visionAnalysis, description);
     logs.push(`Structure planned: ${structurePlan.elements.length} elements`);
 
     let currentScene = structurePlan.elements;

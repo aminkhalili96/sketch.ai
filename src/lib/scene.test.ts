@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beautifyScene, fallbackScene } from '@/lib/scene';
+import { beautifyScene, fallbackScene, parseSceneElements } from '@/lib/scene';
 import { infer3DKind } from '@/lib/projectKind';
 
 describe('3D scene helpers', () => {
@@ -42,5 +42,19 @@ describe('3D scene helpers', () => {
         const names = beautified.map((e) => (e.name ?? '').toLowerCase());
         expect(names.some((n) => n.includes('lid'))).toBe(true);
     });
-});
 
+    it('parseSceneElements coerces unsupported types', () => {
+        const input = JSON.stringify([
+            {
+                type: 'oval',
+                position: [0, 0, 0],
+                dimensions: [40, 80, 40],
+                color: '#8B4513',
+                name: 'body'
+            }
+        ]);
+        const parsed = parseSceneElements(input);
+        expect(parsed).not.toBeNull();
+        expect(parsed?.[0].type).toBe('rounded-box');
+    });
+});

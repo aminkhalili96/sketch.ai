@@ -3,6 +3,7 @@ import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
 import { agentsExecuteRequestSchema } from '@/lib/validators';
 import { executeAgentTask, expandRequestedOutputs } from '@/lib/agents/registry';
 import { fallbackScene, normalizeSceneColors, parseSceneElements } from '@/lib/scene';
+import { buildProjectDescription } from '@/lib/projectDescription';
 import type { AgentsExecuteResponse, ProjectOutputs } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -95,7 +96,11 @@ export async function POST(request: NextRequest) {
                 const existingText = typeof existing === 'string' ? existing : '';
 
                 if (task.outputType === 'scene-json') {
-                    const description = ctx.description || ctx.analysis?.summary || 'Hardware project';
+                    const description =
+                        buildProjectDescription(ctx.description, ctx.analysis?.summary) ||
+                        ctx.description ||
+                        ctx.analysis?.summary ||
+                        'Hardware project';
                     const scene = normalizeSceneColors(fallbackScene(description));
                     shared.sceneElements = scene;
                     ctx.outputs = { ...(ctx.outputs ?? {}), 'scene-json': JSON.stringify(scene, null, 2) };

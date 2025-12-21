@@ -1,5 +1,5 @@
-import { sceneSchema } from '@/lib/validators';
-import { infer3DKind, infer3DKindFromSceneElements } from '@/lib/projectKind';
+import { sceneElementSchema, sceneSchema } from '@/lib/validators';
+import { infer3DKind, infer3DKindFromSceneElements, type Project3DKind } from '@/lib/projectKind';
 import type { z } from 'zod';
 
 type SceneElements = z.infer<typeof sceneSchema>;
@@ -24,7 +24,9 @@ export function parseSceneElements(text: string): SceneElements | null {
 
         const validated = sceneSchema.safeParse(elements);
         if (validated.success) return validated.data;
-        return null;
+
+        const sanitized = sanitizeSceneElements(elements);
+        return sanitized.length > 0 ? sanitized : null;
     };
 
     try {
@@ -44,6 +46,163 @@ export function parseSceneElements(text: string): SceneElements | null {
     }
 
     return null;
+}
+
+function normalizeType(rawType: unknown, kind: Project3DKind): SceneElements[number]['type'] {
+    if (typeof rawType !== 'string') {
+        return kind === 'object' ? 'capsule' : 'rounded-box';
+    }
+
+    const key = rawType.toLowerCase().replace(/_/g, '-').trim();
+
+    const directMap: Record<string, SceneElements[number]['type']> = {
+        box: 'box',
+        cube: 'box',
+        rect: 'box',
+        rectangle: 'box',
+        'rounded-box': 'rounded-box',
+        roundedbox: 'rounded-box',
+        'rounded-rect': 'rounded-box',
+        'round-rect': 'rounded-box',
+        cylinder: 'cylinder',
+        cyl: 'cylinder',
+        tube: 'cylinder',
+        pipe: 'cylinder',
+        sphere: 'sphere',
+        ball: 'sphere',
+        orb: 'sphere',
+        capsule: 'capsule',
+        pill: 'capsule',
+        'pill-shape': 'capsule',
+        oval: kind === 'object' ? 'capsule' : 'rounded-box',
+        ellipse: kind === 'object' ? 'capsule' : 'rounded-box',
+        ellipsoid: kind === 'object' ? 'capsule' : 'rounded-box',
+    };
+
+    if (directMap[key]) return directMap[key];
+    if (key.includes('round') && key.includes('box')) return 'rounded-box';
+    if (key.includes('box') || key.includes('rect') || key.includes('cube')) return 'box';
+    if (key.includes('cyl') || key.includes('tube') || key.includes('pipe')) return 'cylinder';
+    if (key.includes('sphere') || key.includes('ball') || key.includes('orb')) return 'sphere';
+    if (key.includes('capsule') || key.includes('pill')) return 'capsule';
+
+    return kind === 'object' ? 'capsule' : 'rounded-box';
+}
+
+function normalizeVec3(input: unknown, fallback: [number, number, number]): [number, number, number] {
+    if (!Array.isArray(input)) return fallback;
+    const values = input.slice(0, 3).map((v) => {
+        const num = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : Number.NaN;
+        return Number.isFinite(num) ? num : 0;
+    });
+    while (values.length < 3) values.push(0);
+    return [values[0], values[1], values[2]];
+}
+
+function clampPositive(value: number, min = 1): number {
+    const abs = Math.abs(value);
+    return Number.isFinite(abs) && abs >= min ? abs : min;
+}
+
+function normalizeDimensions(
+    type: SceneElements[number]['type'],
+    raw: unknown
+): [number, number, number] {
+    const [x, y, z] = normalizeVec3(raw, [20, 20, 20]).map((v) => Math.abs(v));
+
+    switch (type) {
+        case 'sphere': {
+            const radius = clampPositive(Math.max(x, y, z) / 2);
+            return [radius, 0, 0];
+        }
+        case 'cylinder': {
+            const radius = clampPositive(Math.min(x, z) / 2 || x / 2 || 10);
+            const height = clampPositive(y || x || 20);
+            return [radius, height, 0];
+        }
+        case 'capsule': {
+            const radius = clampPositive(Math.min(x, z) / 2 || x / 2 || 10);
+            const length = clampPositive(y || x || 30);
+            return [radius, length, 0];
+        }
+        case 'rounded-box':
+        case 'box':
+        default:
+            return [clampPositive(x), clampPositive(y), clampPositive(z)];
+    }
+}
+
+function normalizeColor(input: unknown): string | undefined {
+    if (typeof input !== 'string') return undefined;
+    const trimmed = input.trim();
+    if (/^#[0-9A-Fa-f]{6}$/.test(trimmed)) return trimmed;
+    return undefined;
+}
+
+function normalizeMaterial(input: unknown): SceneElements[number]['material'] | undefined {
+    if (input === 'plastic' || input === 'metal' || input === 'glass' || input === 'rubber') {
+        return input;
+    }
+    return undefined;
+}
+
+function inferKindFromRawElements(elements: Array<Record<string, unknown>>): Project3DKind {
+    const names = elements
+        .map((el) => (typeof el.name === 'string' ? el.name.toLowerCase() : ''))
+        .join(' ');
+    if (/(head|ear|muzzle|nose|eye|arm|leg|paw|teddy|bear|plush)/.test(names)) {
+        return 'object';
+    }
+
+    const typeHints = elements
+        .map((el) => (typeof el.type === 'string' ? el.type.toLowerCase() : ''))
+        .join(' ');
+    if (/(sphere|capsule|organic|plush|toy)/.test(typeHints)) {
+        return 'object';
+    }
+
+    return 'enclosure';
+}
+
+export function sanitizeSceneElements(
+    rawElements: unknown,
+    options?: { kind?: Project3DKind }
+): SceneElements {
+    if (!Array.isArray(rawElements)) return [];
+    const candidates = rawElements.filter(isRecord);
+    const kind = options?.kind ?? inferKindFromRawElements(candidates);
+
+    const sanitized: SceneElements = [];
+    for (const el of candidates) {
+        const type = normalizeType(el.type, kind);
+        const position = normalizeVec3(el.position, [0, 0, 0]);
+        const rotation = normalizeVec3(el.rotation, [0, 0, 0]);
+        const dimensions = normalizeDimensions(type, el.dimensions);
+        const color = normalizeColor(el.color);
+        const material = normalizeMaterial(el.material);
+        const radius = typeof el.radius === 'number' ? el.radius : undefined;
+        const smoothness = typeof el.smoothness === 'number' ? el.smoothness : undefined;
+        const name = typeof el.name === 'string' ? el.name : undefined;
+
+        const candidate = {
+            type,
+            position,
+            rotation,
+            dimensions,
+            ...(color ? { color } : {}),
+            ...(material ? { material } : {}),
+            ...(radius !== undefined ? { radius } : {}),
+            ...(smoothness !== undefined ? { smoothness } : {}),
+            ...(name ? { name } : {}),
+        };
+
+        const parsed = sceneElementSchema.safeParse(candidate);
+        if (parsed.success) {
+            sanitized.push(parsed.data);
+        }
+    }
+
+    return sanitized;
 }
 
 function fallbackEnclosureScene(description: string): SceneElements {
@@ -96,7 +255,7 @@ function fallbackEnclosureScene(description: string): SceneElements {
     return [body, lid, ...screws];
 }
 
-function fallbackToyScene(_description: string): SceneElements {
+function fallbackToyScene(): SceneElements {
     // Approximate a cute "teddy bear" style silhouette using simple primitives.
     const headR = 45;
     const bodyR = 36;
@@ -252,7 +411,7 @@ function fallbackToyScene(_description: string): SceneElements {
 
 export function fallbackScene(description: string): SceneElements {
     const kind = infer3DKind(description);
-    return kind === 'object' ? fallbackToyScene(description) : fallbackEnclosureScene(description);
+    return kind === 'object' ? fallbackToyScene() : fallbackEnclosureScene(description);
 }
 
 export function computeSceneBounds(elements: SceneElements): { width: number; height: number; depth: number } | null {

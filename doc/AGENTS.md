@@ -142,6 +142,10 @@ Sketch.ai uses a 5-agent pipeline for 3D generation. Each agent has a specialize
 3. Loop: Critic → Refiner (up to maxIterations)
 4. Return final scene
 
+**Context handling:**
+- The description is a merged string that includes the analysis summary plus any user notes (e.g., color-only inputs).
+- Fallbacks prefer the last valid scene when parsing fails.
+
 ---
 
 ## Adding a New Agent
@@ -159,3 +163,4 @@ Sketch.ai uses a 5-agent pipeline for 3D generation. Each agent has a specialize
 - **Vision confidence**: Low confidence triggers more refinement
 - **Critique score threshold**: Lower = more permissive
 - **Max iterations**: More iterations = better quality, slower
+- **Short notes**: Keep user notes as add-ons ("User notes: brown") instead of replacing the object description

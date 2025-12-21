@@ -89,6 +89,17 @@ Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into
 [Final 3D Scene JSON]
 ```
 
+### Context Merging
+
+For 3D generation and fallback logic, the system merges the sketch analysis summary with any user notes:
+
+```
+Teddy bear sketch
+User notes: brown
+```
+
+This merged description is used for inference, prompts, and fallbacks to prevent short notes (like color-only inputs) from overriding the object type.
+
 ### Object Type Classification
 
 | Type | Shapes Used | Example |
