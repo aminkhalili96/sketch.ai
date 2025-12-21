@@ -43,4 +43,7 @@ next-env.d.ts
 
 # personal/sensitive docs
 doc/INTERVIEW.md
+
+# local experiments
+k8s/
 key.json

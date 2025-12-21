@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { RoundedBox, Stage, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -19,6 +19,8 @@ interface SceneElement {
 
 interface SceneRendererProps {
     sceneJson: string;
+    exploded?: boolean;
+    explodeAmount?: number;
 }
 
 function SceneObject({ element }: { element: SceneElement }) {
@@ -102,9 +104,53 @@ function SceneObject({ element }: { element: SceneElement }) {
     );
 }
 
-export function SceneRenderer({ sceneJson }: SceneRendererProps) {
-    const parsed = parseSceneElements(sceneJson);
-    const elements = parsed ? (normalizeSceneColors(beautifyScene(parsed)) as SceneElement[]) : [];
+export function SceneRenderer({ sceneJson, exploded = false, explodeAmount = 0.35 }: SceneRendererProps) {
+    const parsed = useMemo(() => parseSceneElements(sceneJson), [sceneJson]);
+    const elements = useMemo(
+        () => (parsed ? (normalizeSceneColors(beautifyScene(parsed)) as SceneElement[]) : []),
+        [parsed]
+    );
+
+    const explodedElements = useMemo(() => {
+        if (!exploded || elements.length === 0) return elements;
+
+        const center = elements.reduce(
+            (acc, el) => {
+                acc[0] += el.position[0];
+                acc[1] += el.position[1];
+                acc[2] += el.position[2];
+                return acc;
+            },
+            [0, 0, 0]
+        );
+        center[0] /= elements.length;
+        center[1] /= elements.length;
+        center[2] /= elements.length;
+
+        const maxDimension = elements.reduce((acc, el) => {
+            return Math.max(acc, el.dimensions[0], el.dimensions[1], el.dimensions[2]);
+        }, 0);
+        const explodeScale = Math.max(6, maxDimension * explodeAmount);
+
+        return elements.map((el) => {
+            const dir = new THREE.Vector3(
+                el.position[0] - center[0],
+                el.position[1] - center[1],
+                el.position[2] - center[2]
+            );
+
+            if (dir.length() < 0.001) {
+                dir.set(0, 1, 0);
+            }
+
+            dir.normalize().multiplyScalar(explodeScale);
+
+            return {
+                ...el,
+                position: [el.position[0] + dir.x, el.position[1] + dir.y, el.position[2] + dir.z],
+            };
+        });
+    }, [elements, exploded, explodeAmount]);
 
     if (!parsed) {
         return (
@@ -118,7 +164,7 @@ export function SceneRenderer({ sceneJson }: SceneRendererProps) {
     }
 
     return (
-        <div className="w-full h-[500px] bg-gradient-to-br from-neutral-50 to-neutral-200 rounded-xl overflow-hidden relative border border-neutral-200">
+        <div className="w-full h-[420px] bg-gradient-to-br from-neutral-50 to-neutral-200 rounded-xl overflow-hidden relative border border-neutral-200">
             <Canvas shadows dpr={[1, 2]} camera={{ fov: 45 }}>
                 <Stage
                     environment="studio"
@@ -132,7 +178,7 @@ export function SceneRenderer({ sceneJson }: SceneRendererProps) {
                         far: 200,
                     }}
                 >
-                    {elements.map((el, i) => (
+                    {explodedElements.map((el, i) => (
                         <SceneObject key={i} element={el} />
                     ))}
                 </Stage>

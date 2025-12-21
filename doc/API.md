@@ -80,6 +80,22 @@ Generates outputs (3D model, BOM, firmware, etc.) from project description.
 
 ---
 
+### POST /api/generate/stream
+
+Streams generation status and outputs as newline-delimited JSON (NDJSON).
+
+**Request:** Same as `/api/generate`
+
+**Streaming Response (NDJSON):**
+```json
+{"type":"status","message":"Generating BOM...","outputType":"bom"}
+{"type":"output","outputType":"bom","content":"| Item | ..."}
+{"type":"metadata","metadata":{"estimatedCost":45,"complexity":"moderate","buildTime":"3 hours"}}
+{"type":"done"}
+```
+
+---
+
 ### POST /api/chat
 
 Conversational refinement of the project.
@@ -106,6 +122,21 @@ Conversational refinement of the project.
   "reply": "To make it waterproof, I recommend...",
   "suggestedActions": ["Regenerate 3D Model", "Update Bill of Materials"]
 }
+```
+
+---
+
+### POST /api/chat/stream
+
+Streams chat responses as NDJSON.
+
+**Request:** Same as `/api/chat`
+
+**Streaming Response (NDJSON):**
+```json
+{"type":"delta","text":"..."}
+{"type":"delta","text":"..."}
+{"type":"done"}
 ```
 
 ---
@@ -148,6 +179,24 @@ Compiles OpenSCAD code to STL.
   "stl": "base64-encoded-stl-data"
 }
 ```
+
+---
+
+### POST /api/build-guide
+
+Generates a single Markdown build guide that combines BOM, assembly, and schematic.
+
+**Request:**
+```json
+{
+  "projectName": "my-project",
+  "outputs": { /* ProjectOutputs */ },
+  "metadata": { /* optional ProjectMetadata */ }
+}
+```
+
+**Response:**
+- Markdown file download (`text/markdown`) named `project-build-guide.md`
 
 ---
 

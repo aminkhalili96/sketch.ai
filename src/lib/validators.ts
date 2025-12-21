@@ -169,6 +169,12 @@ export const exportRequestSchema = z.object({
     }).optional(),
 });
 
+export const buildGuideRequestSchema = exportRequestSchema.pick({
+    projectName: true,
+    outputs: true,
+    metadata: true,
+});
+
 // Agents (multi-step, confirm-before-apply)
 export const requestedOutputSchema = z.enum([
     'bom',
@@ -249,6 +255,7 @@ export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 export type GenerateRequest = z.infer<typeof generateRequestSchema>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 export type ExportRequest = z.infer<typeof exportRequestSchema>;
+export type BuildGuideRequest = z.infer<typeof buildGuideRequestSchema>;
 export type AgentsPlanRequest = z.infer<typeof agentsPlanRequestSchema>;
 export type AgentsExecuteRequest = z.infer<typeof agentsExecuteRequestSchema>;
 export type AgentPlan = z.infer<typeof agentPlanSchema>;

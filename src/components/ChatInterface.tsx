@@ -7,12 +7,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore } from '@/stores/projectStore';
-import type { AgentPlan, RequestedOutput } from '@/types';
+import type { AgentPlan, RequestedOutput, AnalysisResult, ProjectOutputs } from '@/types';
 
 export function ChatInterface() {
     const [input, setInput] = useState('');
     const [requestedOutputs, setRequestedOutputs] = useState<RequestedOutput[]>([]);
     const [pendingPlan, setPendingPlan] = useState<AgentPlan | null>(null);
+    const [streamingReply, setStreamingReply] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -36,7 +37,7 @@ export function ChatInterface() {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages.length]);
+    }, [messages.length, streamingReply]);
 
     const toggleRequestedOutput = (output: RequestedOutput) => {
         setRequestedOutputs((prev) => (
@@ -44,6 +45,71 @@ export function ChatInterface() {
                 ? prev.filter((o) => o !== output)
                 : [...prev, output]
         ));
+    };
+
+    const streamChatResponse = async (payload: {
+        message: string;
+        history: typeof messages;
+        projectContext?: {
+            description: string;
+            analysis?: AnalysisResult;
+            outputs?: ProjectOutputs;
+        };
+    }) => {
+        const response = await fetch('/api/chat/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok || !response.body) {
+            return false;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullReply = '';
+
+        setStreamingReply('');
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                
+                try {
+                    const event = JSON.parse(trimmed) as { type: string; text?: string; error?: string };
+
+                    if (event.type === 'delta' && event.text) {
+                        fullReply += event.text;
+                        setStreamingReply(fullReply);
+                    } else if (event.type === 'error') {
+                        throw new Error(event.error || 'Streaming failed');
+                    } else if (event.type === 'done') {
+                        break;
+                    }
+                } catch (parseError) {
+                    // Skip invalid JSON lines (might be partial data)
+                    console.warn('Failed to parse stream line:', trimmed, parseError);
+                    continue;
+                }
+            }
+        }
+
+        if (fullReply.trim()) {
+            addMessage({ role: 'assistant', content: fullReply });
+        }
+
+        setStreamingReply('');
+        return true;
     };
 
     const handleSend = async () => {
@@ -64,57 +130,68 @@ export function ChatInterface() {
 
         try {
             const agentMode = requestedOutputs.length > 0;
-            const endpoint = agentMode ? '/api/agents/plan' : '/api/chat';
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(
-                    agentMode
-                        ? {
-                            message: userMessage,
-                            requestedOutputs: orderedRequestedOutputs,
-                            projectContext: {
-                                description: currentProject?.description || '',
-                                analysis: currentProject?.analysis,
-                                outputs: currentProject?.outputs,
-                                metadata: currentProject?.metadata,
-                            },
-                        }
-                        : {
-                            message: userMessage,
-                            history: messages,
-                            projectContext: {
-                                description: currentProject?.description || '',
-                                analysis: currentProject?.analysis,
-                                outputs: currentProject?.outputs,
-                            },
-                        }
-                ),
-            });
-
-            const data = await response.json();
-
-            if (!data.success) {
-                throw new Error(data.error || 'Request failed');
-            }
-
             if (agentMode) {
+                const response = await fetch('/api/agents/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        requestedOutputs: orderedRequestedOutputs,
+                        projectContext: {
+                            description: currentProject?.description || '',
+                            analysis: currentProject?.analysis,
+                            outputs: currentProject?.outputs,
+                            metadata: currentProject?.metadata,
+                        },
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Request failed');
+                }
+
                 setPendingPlan(data.plan);
                 addMessage({
                     role: 'assistant',
                     content: `I drafted a plan to update: ${requestedOutputs.join(', ')}.\nReview and confirm below to apply changes.`,
                 });
             } else {
-                addMessage({ role: 'assistant', content: data.reply });
-            }
+                const payload = {
+                    message: userMessage,
+                    history: messages,
+                    projectContext: {
+                        description: currentProject?.description || '',
+                        analysis: currentProject?.analysis,
+                        outputs: currentProject?.outputs,
+                    },
+                };
 
+                const streamed = await streamChatResponse(payload);
+                if (!streamed) {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Request failed');
+                    }
+
+                    addMessage({ role: 'assistant', content: data.reply });
+                }
+            }
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Request failed');
             addMessage({
                 role: 'assistant',
                 content: 'Sorry, I encountered an error. Please try again.',
             });
+            setStreamingReply('');
         } finally {
             setChatting(false);
         }
@@ -261,7 +338,22 @@ export function ChatInterface() {
                     </AnimatePresence>
                 )}
 
-                {isChatting && (
+                {streamingReply && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex justify-start"
+                    >
+                        <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-neutral-100 text-neutral-800">
+                            <div className="prose prose-sm max-w-none prose-neutral">
+                                <ReactMarkdown>{streamingReply}</ReactMarkdown>
+                                <span className="inline-block ml-1 animate-pulse text-neutral-400">▍</span>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {isChatting && !streamingReply && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}

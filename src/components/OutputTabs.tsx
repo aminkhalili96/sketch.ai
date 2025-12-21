@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -12,6 +12,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { SceneRenderer } from '@/components/SceneRenderer';
 import { buildProjectDescription } from '@/lib/projectDescription';
 import { parseBomTable } from '@/lib/bom';
+import type { ProjectMetadata } from '@/types';
 
 type OutputType = 'bom' | 'assembly' | 'firmware' | 'schematic' | 'openscad';
 type GenerateOutputType = OutputType | 'scene-json';
@@ -28,7 +29,10 @@ export function OutputTabs() {
     const [activeTab, setActiveTab] = useState<OutputType>('openscad');
     const [copiedTab, setCopiedTab] = useState<string | null>(null);
     const [isCompiling, setIsCompiling] = useState(false);
+    const [isExploded, setIsExploded] = useState(false);
     const [stlDownloadUrl, setStlDownloadUrl] = useState<string | null>(null);
+    const [isBuildingGuide, setIsBuildingGuide] = useState(false);
+    const [generationLogs, setGenerationLogs] = useState<string[]>([]);
     const stlUrlRef = useRef<string | null>(null);
 
     const {
@@ -39,14 +43,19 @@ export function OutputTabs() {
         setGenerating,
         isExporting,
         setExporting,
+        outputSnapshots,
+        pushOutputsSnapshot,
+        replaceOutputs,
         setError,
     } = useProjectStore();
 
     const outputs = currentProject?.outputs || {};
     const hasAnyOutput = Object.values(outputs).some(Boolean);
+    const hasBuildGuideContent = Boolean(outputs.bom || outputs.assembly || outputs.schematic);
     const projectDescription =
         buildProjectDescription(currentProject?.description, currentProject?.analysis?.summary) ||
         'Hardware project';
+    const recentSnapshots = outputSnapshots.slice(-3).reverse();
 
     useEffect(() => {
         stlUrlRef.current = stlDownloadUrl;
@@ -68,6 +77,10 @@ export function OutputTabs() {
         });
     }, [outputs.openscad]);
 
+    const appendGenerationLog = (message: string) => {
+        setGenerationLogs((prev) => [...prev.slice(-5), message]);
+    };
+
     const handleGenerate = async (types: OutputType[]) => {
         if (!currentProject?.description && !currentProject?.analysis) {
             setError('Please upload a sketch or add a description first');
@@ -76,34 +89,99 @@ export function OutputTabs() {
 
         setGenerating(true);
         setError(null);
+        setGenerationLogs([]);
+        appendGenerationLog('Preparing generation...');
 
         try {
+            if (hasAnyOutput) {
+                pushOutputsSnapshot(`Generate ${types.join(', ')}`);
+            }
             const outputTypesToRequest: GenerateOutputType[] = [...types];
             // Always try to fetch scene-json if we are asking for openscad
             if (types.includes('openscad')) {
                 outputTypesToRequest.push('scene-json');
             }
 
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    projectDescription,
-                    analysisContext: currentProject.analysis,
-                    outputTypes: outputTypesToRequest,
-                    sketchImage: currentProject.sketchBase64, // Pass sketch for vision-to-3D
-                }),
-            });
+            const payload = {
+                projectDescription,
+                analysisContext: currentProject.analysis,
+                outputTypes: outputTypesToRequest,
+                sketchImage: currentProject.sketchBase64,
+            };
 
-            const data = await response.json();
+            const streamed = await (async () => {
+                const response = await fetch('/api/generate/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
 
-            if (!data.success) {
-                throw new Error(data.error || 'Generation failed');
-            }
+                if (!response.ok || !response.body) {
+                    return false;
+                }
 
-            setOutputs(data.outputs);
-            if (data.metadata) {
-                setMetadata(data.metadata);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                appendGenerationLog('Streaming generation started...');
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() ?? '';
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed) continue;
+                        const event = JSON.parse(trimmed) as {
+                            type: string;
+                            message?: string;
+                            outputType?: OutputType | 'scene-json';
+                            content?: string;
+                            metadata?: unknown;
+                            error?: string;
+                        };
+
+                        if (event.type === 'status' && event.message) {
+                            appendGenerationLog(event.message);
+                        } else if (event.type === 'output' && event.outputType && typeof event.content === 'string') {
+                            setOutputs({ [event.outputType]: event.content });
+                        } else if (event.type === 'metadata' && event.metadata) {
+                            setMetadata(event.metadata as ProjectMetadata);
+                        } else if (event.type === 'error') {
+                            throw new Error(event.error || 'Generation failed');
+                        } else if (event.type === 'done') {
+                            appendGenerationLog('Generation complete.');
+                        }
+                    }
+                }
+
+                return true;
+            })();
+
+            if (!streamed) {
+                appendGenerationLog('Generating outputs...');
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Generation failed');
+                }
+
+                setOutputs(data.outputs);
+                if (data.metadata) {
+                    setMetadata(data.metadata);
+                }
+                appendGenerationLog('Generation complete.');
             }
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Generation failed');
@@ -147,6 +225,59 @@ export function OutputTabs() {
         } finally {
             setExporting(false);
         }
+    };
+
+    const handleDownloadBuildGuide = async () => {
+        if (!hasBuildGuideContent) {
+            setError('Generate BOM, Assembly, or Schematic first');
+            return;
+        }
+
+        setIsBuildingGuide(true);
+        setError(null);
+
+        try {
+            const response = await fetch('/api/build-guide', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectName: currentProject?.name || 'sketch-ai-project',
+                    outputs,
+                    metadata: currentProject?.metadata,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Build guide failed');
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentProject?.name || 'project'}-build-guide.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : 'Build guide failed');
+        } finally {
+            setIsBuildingGuide(false);
+        }
+    };
+
+    const handleRefine = () => {
+        const target = document.getElementById('design-assistant');
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const handleRestoreSnapshot = (snapshotIndex: number) => {
+        const snapshot = recentSnapshots[snapshotIndex];
+        if (!snapshot) return;
+        pushOutputsSnapshot('Before restore');
+        replaceOutputs(snapshot.outputs);
+        setMetadata(snapshot.metadata ?? null);
     };
 
     const handleCopy = async (content: string, tabId: string) => {
@@ -361,13 +492,28 @@ export function OutputTabs() {
         const sceneJson = outputs['scene-json'];
 
         if (sceneJson) {
-            return (
-                <div className="space-y-6">
-                    <SceneRenderer sceneJson={sceneJson} />
+        return (
+            <div className="space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <p className="text-sm font-medium text-neutral-900">3D Preview</p>
+                        <p className="text-xs text-neutral-500">Toggle exploded view to inspect parts.</p>
+                    </div>
+                    <Button
+                        onClick={() => setIsExploded((prev) => !prev)}
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                    >
+                        {isExploded ? 'Compact View' : 'Exploded View'}
+                    </Button>
+                </div>
 
-                    <div className="flex gap-2 flex-wrap items-center justify-between border-t border-neutral-100 pt-4">
-                        <h3 className="text-sm font-medium text-neutral-900">OpenSCAD Source</h3>
-                        <div className="flex gap-2">
+                <SceneRenderer sceneJson={sceneJson} exploded={isExploded} />
+
+                <div className="flex gap-2 flex-wrap items-center justify-between border-t border-neutral-100 pt-4">
+                    <h3 className="text-sm font-medium text-neutral-900">OpenSCAD Source</h3>
+                    <div className="flex gap-2">
                             <Button
                                 onClick={handleCompile3D}
                                 disabled={isCompiling}
@@ -490,8 +636,8 @@ export function OutputTabs() {
     };
 
     return (
-        <Card className="flex flex-col h-full bg-white border border-neutral-200 rounded-2xl shadow-sm">
-            <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+        <Card className="flex flex-col h-full overflow-hidden bg-white border border-neutral-200 rounded-2xl shadow-sm">
+            <div className="p-4 border-b border-neutral-100 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h2 className="text-lg font-medium text-neutral-900">
                         Generated Outputs
@@ -505,7 +651,7 @@ export function OutputTabs() {
                     )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 justify-end">
                     <Button
                         onClick={() => handleGenerate(['bom', 'assembly', 'firmware', 'schematic', 'openscad'])}
                         disabled={isGenerating || (!currentProject?.analysis && !currentProject?.description)}
@@ -513,53 +659,122 @@ export function OutputTabs() {
                     >
                         {isGenerating ? 'Generating...' : 'Generate All'}
                     </Button>
-
+                    <Button
+                        onClick={handleRefine}
+                        variant="outline"
+                        className="border-neutral-200 rounded-full"
+                    >
+                        Refine
+                    </Button>
+                    <Button
+                        onClick={handleDownloadBuildGuide}
+                        disabled={isBuildingGuide || !hasBuildGuideContent}
+                        variant="outline"
+                        className="border-neutral-200 rounded-full"
+                    >
+                        {isBuildingGuide ? 'Preparing Guide...' : 'Download Build Guide'}
+                    </Button>
                     {hasAnyOutput && (
                         <Button
                             onClick={handleExport}
                             disabled={isExporting}
                             variant="outline"
-                            className="border-neutral-200 rounded-xl"
+                            className="border-neutral-200 rounded-full"
                         >
-                            {isExporting ? 'Exporting...' : 'Export'}
+                            {isExporting ? 'Exporting...' : 'Export ZIP'}
                         </Button>
                     )}
                 </div>
             </div>
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OutputType)} className="flex-1 flex flex-col min-h-0">
-                <TabsList className="mx-4 mt-4 bg-neutral-100 rounded-xl p-1">
-                    {OUTPUT_TABS.map((tab) => (
-                        <TabsTrigger
-                            key={tab.id}
-                            value={tab.id}
-                            className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm"
-                        >
-                            {tab.label}
-                            {outputs[tab.id] && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            )}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
+            <div className="flex-1 min-h-0 overflow-y-auto pb-6">
+                {generationLogs.length > 0 && (
+                    <div className="mx-4 mt-4 rounded-xl border border-neutral-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-neutral-800">Generation Activity</span>
+                            <span className={`text-xs ${isGenerating ? 'text-amber-600' : 'text-green-600'}`}>
+                                {isGenerating ? 'In progress' : 'Complete'}
+                            </span>
+                        </div>
+                        <div className="mt-2 space-y-1 text-xs text-neutral-500">
+                            {generationLogs.map((log, idx) => (
+                                <div key={`${log}-${idx}`} className="flex items-start gap-2">
+                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-neutral-300" />
+                                    <span>{log}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-                <div className="flex-1 overflow-y-auto p-4">
-                    <AnimatePresence mode="wait">
-                        {OUTPUT_TABS.map((tab) => (
-                            <TabsContent key={tab.id} value={tab.id} className="mt-0 h-full">
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="rounded-xl bg-neutral-50 border border-neutral-100 p-4 overflow-auto"
+                {recentSnapshots.length > 0 && (
+                    <div className="mx-4 mt-4 rounded-xl border border-neutral-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-neutral-900">Recent Versions</h4>
+                            <span className="text-xs text-neutral-400">Last {recentSnapshots.length}</span>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                            {recentSnapshots.map((snapshot, index) => (
+                                <div
+                                    key={snapshot.timestamp}
+                                    className="flex items-center justify-between gap-2 rounded-lg border border-neutral-100 px-3 py-2"
                                 >
-                                    {tab.id === 'openscad' ? render3DContent() : renderContent(outputs[tab.id], tab.id)}
-                                </motion.div>
-                            </TabsContent>
+                                    <div>
+                                        <p className="text-xs font-medium text-neutral-700">
+                                            {snapshot.note || 'Snapshot'}
+                                        </p>
+                                        <p className="text-[11px] text-neutral-400">
+                                            {new Date(snapshot.timestamp).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs"
+                                        onClick={() => handleRestoreSnapshot(index)}
+                                    >
+                                        Restore
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OutputType)} className="flex flex-col">
+                    <TabsList className="mx-4 mt-4 bg-neutral-100 rounded-xl p-1">
+                        {OUTPUT_TABS.map((tab) => (
+                            <TabsTrigger
+                                key={tab.id}
+                                value={tab.id}
+                                className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm"
+                            >
+                                {tab.label}
+                                {outputs[tab.id] && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                )}
+                            </TabsTrigger>
                         ))}
-                    </AnimatePresence>
-                </div>
-            </Tabs>
+                    </TabsList>
+
+                    <div className="p-4">
+                        <AnimatePresence mode="wait">
+                            {OUTPUT_TABS.map((tab) => (
+                                <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="rounded-xl bg-neutral-50 border border-neutral-100 p-4 overflow-auto"
+                                    >
+                                        {tab.id === 'openscad' ? render3DContent() : renderContent(outputs[tab.id], tab.id)}
+                                    </motion.div>
+                                </TabsContent>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                </Tabs>
+            </div>
         </Card>
     );
 }

@@ -52,9 +52,12 @@ describe('ChatInterface', () => {
     });
 
     it('sends message on button click', async () => {
-        mockFetch.mockResolvedValueOnce({
-            json: async () => ({ success: true, reply: 'Hi there' }),
-        });
+        mockFetch
+            .mockResolvedValueOnce({ ok: false, body: null } as Response)
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ success: true, reply: 'Hi there' }),
+            } as Response);
 
         render(<ChatInterface />);
         const input = screen.getByPlaceholderText('Ask anything...');
@@ -72,9 +75,12 @@ describe('ChatInterface', () => {
     });
 
     it('handles API error', async () => {
-        mockFetch.mockResolvedValueOnce({
-            json: async () => ({ success: false, error: 'API Error' }),
-        });
+        mockFetch
+            .mockResolvedValueOnce({ ok: false, body: null } as Response)
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ success: false, error: 'API Error' }),
+            } as Response);
 
         render(<ChatInterface />);
         const input = screen.getByPlaceholderText('Ask anything...');

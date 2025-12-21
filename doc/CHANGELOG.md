@@ -9,6 +9,13 @@ All notable changes to Sketch.ai are documented here.
 - Vision-to-3D: Pass sketch image directly to generation
 - Critic + Refiner self-correction loop
 - Comprehensive documentation in `/doc` folder
+- Product overview cards for BOM, assembly, and schematic
+- Build guide download (combined BOM + assembly + schematic)
+- Exploded-view toggle for 3D previews
+- Version stamp in footer (version + last updated)
+- Output version history with restore
+- Streaming chat responses
+- Streaming generation status (NDJSON) for outputs
 
 ### Changed
 - Removed hardcoded teddy bear fallbacks
