@@ -1,0 +1,36 @@
+# Dependencies - we'll install fresh in Docker
+node_modules
+.pnpm-store
+
+# Build outputs - we'll rebuild in Docker
+.next
+out
+build
+
+# Git - not needed in container
+.git
+.gitignore
+
+# Environment files - NEVER bake secrets into images!
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.vscode
+.idea
+.DS_Store
+
+# Tests and docs - not needed in production
+coverage
+*.test.ts
+*.spec.ts
+docs
+doc
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Personal/sensitive documents
+doc/INTERVIEW.md
+INTERVIEW.md
