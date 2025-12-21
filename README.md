@@ -2,9 +2,12 @@
 
 > Transform hardware sketches into manufacturable 3D designs with AI
 
+🔗 **[Live Demo](https://bit.ly/sketch_ai)** | **[Try it now →](https://sketch-ai-6kexzh25rq-uc.a.run.app)**
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+
 
 ## ✨ Features
 
