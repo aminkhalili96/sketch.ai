@@ -147,7 +147,7 @@ export function SceneRenderer({ sceneJson, exploded = false, explodeAmount = 0.3
 
             return {
                 ...el,
-                position: [el.position[0] + dir.x, el.position[1] + dir.y, el.position[2] + dir.z],
+                position: [el.position[0] + dir.x, el.position[1] + dir.y, el.position[2] + dir.z] as [number, number, number],
             };
         });
     }, [elements, exploded, explodeAmount]);
