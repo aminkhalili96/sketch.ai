@@ -1,5 +1,5 @@
 // Refiner Agent - Fixes issues identified by the Critic
-import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { VisionAnalysis } from './visionAnalyzer';
 import type { StructurePlan } from './structurePlanner';
@@ -74,6 +74,7 @@ export async function refineScene(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
+        recordChatUsage(response, modelName, { source: 'agent:refiner' });
 
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -109,6 +110,7 @@ export async function refineScene(
             success: true
         };
     } catch (error) {
+        recordChatError(modelName, { source: 'agent:refiner' }, error as Error);
         console.error('Refinement failed:', error);
 
         // If refinement fails and we have a type mismatch, do emergency local fix

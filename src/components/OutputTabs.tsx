@@ -25,6 +25,15 @@ const OUTPUT_TABS: { id: OutputType; label: string }[] = [
     { id: 'schematic', label: 'Schematic' },
 ];
 
+const REPORT_OUTPUTS: Array<{ id: keyof ProjectOutputs; label: string }> = [
+    { id: 'safety', label: 'Safety Review' },
+    { id: 'sustainability', label: 'Sustainability' },
+    { id: 'cost-optimization', label: 'Cost Optimization' },
+    { id: 'dfm', label: 'DFM' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'patent-risk', label: 'Patent Risk' },
+];
+
 export function OutputTabs() {
     const [activeTab, setActiveTab] = useState<OutputType>('openscad');
     const [copiedTab, setCopiedTab] = useState<string | null>(null);
@@ -58,6 +67,7 @@ export function OutputTabs() {
         buildProjectDescription(currentProject?.description, currentProject?.analysis?.summary) ||
         'Hardware project';
     const recentSnapshots = outputSnapshots.slice(-3).reverse();
+    const reportTabs = REPORT_OUTPUTS.filter((report) => outputs[report.id]);
 
     useEffect(() => {
         stlUrlRef.current = stlDownloadUrl;
@@ -449,19 +459,26 @@ export function OutputTabs() {
         );
     };
 
-    const renderContent = (content: string | undefined, type: OutputType) => {
+    const renderContent = (
+        content: string | undefined,
+        type: OutputType | keyof ProjectOutputs,
+        options: { allowGenerate?: boolean } = {}
+    ) => {
+        const allowGenerate = options.allowGenerate ?? true;
         if (!content) {
             return (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                     <p className="text-neutral-400 text-sm">No content yet</p>
-                    <Button
-                        onClick={() => handleGenerate([type])}
-                        disabled={isGenerating || (!currentProject?.analysis && !currentProject?.description)}
-                        variant="outline"
-                        className="mt-4 rounded-xl border-neutral-200"
-                    >
-                        Generate {OUTPUT_TABS.find(t => t.id === type)?.label}
-                    </Button>
+                    {allowGenerate && typeof type === 'string' && OUTPUT_TABS.find(t => t.id === type) && (
+                        <Button
+                            onClick={() => handleGenerate([type as OutputType])}
+                            disabled={isGenerating || (!currentProject?.analysis && !currentProject?.description)}
+                            variant="outline"
+                            className="mt-4 rounded-xl border-neutral-200"
+                        >
+                            Generate {OUTPUT_TABS.find(t => t.id === type)?.label}
+                        </Button>
+                    )}
                 </div>
             );
         }
@@ -801,6 +818,28 @@ export function OutputTabs() {
                         </AnimatePresence>
                     </div>
                 </Tabs>
+
+                {reportTabs.length > 0 && (
+                    <div className="mx-4 mb-6 rounded-2xl border border-neutral-200 bg-white p-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-neutral-900">Reports</h4>
+                            <span className="text-xs text-neutral-400">{reportTabs.length} available</span>
+                        </div>
+                        <div className="mt-3 space-y-4">
+                            {reportTabs.map((report) => (
+                                <div
+                                    key={report.id}
+                                    className="rounded-xl border border-neutral-100 bg-neutral-50 p-3"
+                                >
+                                    <div className="mb-2 text-xs font-semibold text-neutral-700">
+                                        {report.label}
+                                    </div>
+                                    {renderContent(outputs[report.id], report.id, { allowGenerate: false })}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </Card>
     );

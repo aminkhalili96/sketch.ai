@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import JSZip from 'jszip';
 import { exportRequestSchema } from '@/lib/validators';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.general);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     try {
         const body = await request.json();
 
         // Validate request
         const validationResult = exportRequestSchema.safeParse(body);
         if (!validationResult.success) {
-            return NextResponse.json(
+            return ctx.finalize(NextResponse.json(
                 { success: false, error: validationResult.error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         const { projectName, outputs, metadata } = validationResult.data;
@@ -23,10 +30,10 @@ export async function POST(request: NextRequest) {
         // Create project folder
         const folder = zip.folder(sanitizedName);
         if (!folder) {
-            return NextResponse.json(
+            return ctx.finalize(NextResponse.json(
                 { success: false, error: 'Failed to create zip folder' },
                 { status: 500 }
-            );
+            ));
         }
 
         // Add README
@@ -48,6 +55,12 @@ ${outputs.bom ? '- `Bill-of-Materials.md` - Complete component list' : ''}
 ${outputs.assembly ? '- `Assembly-Instructions.md` - Step-by-step build guide' : ''}
 ${outputs.firmware ? '- `firmware/` - Microcontroller code' : ''}
 ${outputs.schematic ? '- `Schematic.md` - Circuit design description' : ''}
+${outputs.safety ? '- `Safety-Review.md` - Safety compliance report' : ''}
+${outputs.sustainability ? '- `Sustainability.md` - Environmental impact analysis' : ''}
+${outputs['cost-optimization'] ? '- `Cost-Optimization.md` - Cost optimization report' : ''}
+${outputs.dfm ? '- `DFM-Analysis.md` - Design for Manufacturing notes' : ''}
+${outputs.marketing ? '- `Marketing-Brief.md` - Marketing copy' : ''}
+${outputs['patent-risk'] ? '- `Patent-Risk.md` - Patent/IP risk analysis' : ''}
 
 ## Getting Started
 
@@ -87,6 +100,30 @@ ${outputs.schematic ? '- `Schematic.md` - Circuit design description' : ''}
             folder.file('Schematic.md', outputs.schematic);
         }
 
+        if (outputs.safety) {
+            folder.file('Safety-Review.md', outputs.safety);
+        }
+
+        if (outputs.sustainability) {
+            folder.file('Sustainability.md', outputs.sustainability);
+        }
+
+        if (outputs['cost-optimization']) {
+            folder.file('Cost-Optimization.md', outputs['cost-optimization']);
+        }
+
+        if (outputs.dfm) {
+            folder.file('DFM-Analysis.md', outputs.dfm);
+        }
+
+        if (outputs.marketing) {
+            folder.file('Marketing-Brief.md', outputs.marketing);
+        }
+
+        if (outputs['patent-risk']) {
+            folder.file('Patent-Risk.md', outputs['patent-risk']);
+        }
+
         if (outputs['scene-json']) {
             folder.file('scene_model.json', outputs['scene-json']);
         }
@@ -99,20 +136,21 @@ ${outputs.schematic ? '- `Schematic.md` - Circuit design description' : ''}
         });
 
         // Return as downloadable file
-        return new NextResponse(zipBlob, {
+        return ctx.finalize(new NextResponse(zipBlob, {
             status: 200,
             headers: {
                 'Content-Type': 'application/zip',
                 'Content-Disposition': `attachment; filename="${sanitizedName}.zip"`,
             },
-        });
+        }));
 
     } catch (error) {
         console.error('Export error:', error);
+        ctx.logError(error as Error);
 
-        return NextResponse.json(
+        return ctx.finalize(NextResponse.json(
             { success: false, error: 'Failed to generate export file' },
             { status: 500 }
-        );
+        ));
     }
 }

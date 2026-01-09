@@ -1,5 +1,5 @@
 // Structure Planner Agent - Plans 3D structure based on vision analysis
-import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { VisionAnalysis } from './visionAnalyzer';
 
@@ -99,6 +99,7 @@ export async function planStructure(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
+        recordChatUsage(response, modelName, { source: 'agent:structure-planner' });
 
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -133,6 +134,7 @@ export async function planStructure(
             reasoning: plan.reasoning || 'Structure planned based on vision analysis'
         };
     } catch (error) {
+        recordChatError(modelName, { source: 'agent:structure-planner' }, error as Error);
         console.error('Structure planning failed:', error);
 
         // Generate fallback based on vision analysis

@@ -124,7 +124,7 @@ export async function orchestrate3DGeneration(
 
     if (!skipVisualPolish) {
         logs.push('');
-        logs.push('=== VISUAL POLISH PHASE ==="');
+        logs.push('=== VISUAL POLISH PHASE ===');
         logs.push('Enhancing visual appeal...');
 
         while (visualIteration < maxVisualIterations) {

@@ -1,5 +1,5 @@
 // Visual Aesthetics Refiner Agent - Automatically improves 3D model visual appeal
-import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { VisualCritiqueResult } from './visualCritic';
 
@@ -93,6 +93,7 @@ export async function refineVisualAppeal(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
+        recordChatUsage(response, modelName, { source: 'agent:visual-refiner' });
 
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -114,6 +115,7 @@ export async function refineVisualAppeal(
             summary: result.summary || 'Visual improvements applied'
         };
     } catch (error) {
+        recordChatError(modelName, { source: 'agent:visual-refiner' }, error as Error);
         console.error('Visual refinement failed:', error);
 
         // Fallback: apply basic color improvements

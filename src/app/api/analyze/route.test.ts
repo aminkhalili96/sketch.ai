@@ -16,7 +16,9 @@ vi.mock('@/lib/openai', () => ({
     }),
     getModelName: () => 'test-model',
     isOfflineMode: () => false,
-    handleOpenAIError: vi.fn()
+    handleOpenAIError: vi.fn(),
+    recordChatError: vi.fn(),
+    recordChatUsage: vi.fn()
 }));
 
 vi.mock('@/lib/prompts', () => ({

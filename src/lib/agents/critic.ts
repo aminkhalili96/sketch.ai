@@ -1,5 +1,5 @@
 // Critic Agent - Validates generated scene against original input
-import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { VisionAnalysis } from './visionAnalyzer';
 import type { StructurePlan } from './structurePlanner';
@@ -86,6 +86,7 @@ export async function critiqueScene(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
+        recordChatUsage(response, modelName, { source: 'agent:critic' });
 
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -113,6 +114,7 @@ export async function critiqueScene(
             summary: critique.summary || 'Critique completed'
         };
     } catch (error) {
+        recordChatError(modelName, { source: 'agent:critic' }, error as Error);
         console.error('Critique failed:', error);
 
         // Quick local validation

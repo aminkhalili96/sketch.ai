@@ -273,6 +273,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error('Analyze error:', error);
         ctx.logError(error as Error);
+        recordChatError(getModelName('vision'), { requestId: ctx.requestId, source: 'analyze:vision' }, error as Error);
 
         if (error instanceof SyntaxError) {
             return ctx.finalize(NextResponse.json<AnalyzeResponse>(

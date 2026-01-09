@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildGuideRequestSchema } from '@/lib/validators';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.general);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     try {
         const body = await request.json();
 
         const validationResult = buildGuideRequestSchema.safeParse(body);
         if (!validationResult.success) {
-            return NextResponse.json(
+            return ctx.finalize(NextResponse.json(
                 { success: false, error: validationResult.error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         const { projectName, outputs, metadata } = validationResult.data;
@@ -33,18 +40,19 @@ export async function POST(request: NextRequest) {
 
         const content = sections.join('\n\n');
 
-        return new NextResponse(content, {
+        return ctx.finalize(new NextResponse(content, {
             status: 200,
             headers: {
                 'Content-Type': 'text/markdown; charset=utf-8',
                 'Content-Disposition': `attachment; filename="${sanitizedName}-build-guide.md"`,
             },
-        });
+        }));
     } catch (error) {
         console.error('Build guide error:', error);
-        return NextResponse.json(
+        ctx.logError(error as Error);
+        return ctx.finalize(NextResponse.json(
             { success: false, error: 'Failed to generate build guide' },
             { status: 500 }
-        );
+        ));
     }
 }

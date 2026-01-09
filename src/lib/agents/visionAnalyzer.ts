@@ -1,5 +1,5 @@
 // Vision Analyzer Agent - Extracts object structure from sketch image
-import { getLLMClient, getModelName, withRetry, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, withRetry, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 
 export interface VisionAnalysis {
@@ -133,6 +133,8 @@ export async function analyzeSketchVision(
             return await llmClient.chat.completions.create(requestOptions);
         });
 
+        recordChatUsage(response, modelName, { source: 'agent:vision' });
+
         // Type assertion since we set stream: false
         const content = (response as { choices: { message: { content: string | null } }[] }).choices[0]?.message?.content;
         if (!content) {
@@ -160,6 +162,7 @@ export async function analyzeSketchVision(
             confidence: typeof analysis.confidence === 'number' ? analysis.confidence : 0.5
         };
     } catch (error) {
+        recordChatError(modelName, { source: 'agent:vision' }, error as Error);
         console.error('Vision analysis failed:', error);
         return inferFromDescriptionFallback(description);
     }

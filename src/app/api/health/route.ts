@@ -1,5 +1,8 @@
 // Health Check Endpoint - Kubernetes-compatible health/readiness probe
 import { NextResponse } from 'next/server';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { isOfflineMode } from '@/lib/openai';
 
 const startTime = Date.now();
 
@@ -30,6 +33,11 @@ interface HealthStatus {
  * - 503 Service Unavailable: Service is unhealthy
  */
 export async function GET(request: Request) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.general);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     const url = new URL(request.url);
     const deepCheck = url.searchParams.get('deep') === 'true';
 
@@ -55,15 +63,16 @@ export async function GET(request: Request) {
     };
 
     // Deep check: verify OpenAI API connectivity
-    if (deepCheck) {
+    if (deepCheck && !isOfflineMode()) {
         try {
             const apiKey = process.env.OPENAI_API_KEY;
+            const baseURL = process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1';
             if (!apiKey) {
                 health.checks.openai = 'error';
                 health.status = 'degraded';
             } else {
                 // Quick connectivity check (list models is fast)
-                const response = await fetch('https://api.openai.com/v1/models', {
+                const response = await fetch(`${baseURL}/models`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${apiKey}`,
@@ -87,5 +96,5 @@ export async function GET(request: Request) {
     // Determine HTTP status
     const httpStatus = health.status === 'error' ? 503 : 200;
 
-    return NextResponse.json(health, { status: httpStatus });
+    return ctx.finalize(NextResponse.json(health, { status: httpStatus }));
 }

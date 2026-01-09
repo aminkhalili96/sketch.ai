@@ -15,7 +15,7 @@ import {
     SYSTEM_PROMPT,
     fillPromptTemplate,
 } from '@/lib/prompts';
-import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { beautifyScene, computeSceneBounds, fallbackScene, normalizeSceneColors, parseSceneElements } from '@/lib/scene';
 import { fallbackOpenSCAD } from '@/lib/openscad';
 import { infer3DKind } from '@/lib/projectKind';
@@ -175,6 +175,7 @@ export async function executeAgentTask(
         ctx.description ||
         ctx.analysis?.summary ||
         'Hardware project';
+    const modelName = getModelName('text', options?.model);
 
     const current = ctx.outputs?.[task.outputType];
 
@@ -197,7 +198,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -206,6 +207,7 @@ export async function executeAgentTask(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } }),
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:scene-json' });
 
         let jsonContent = response.choices[0]?.message?.content;
         if (jsonContent) {
@@ -267,7 +269,7 @@ export async function executeAgentTask(
 
         try {
             const response = await getLLMClient().chat.completions.create({
-                model: getModelName('text', options?.model),
+                model: modelName,
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
                     { role: 'user', content: prompt },
@@ -275,6 +277,7 @@ export async function executeAgentTask(
                 max_tokens: 4000,
                 stream: false as const,
             });
+            recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:openscad' });
 
             const content = response.choices[0]?.message?.content;
             if (!content) {
@@ -287,6 +290,7 @@ export async function executeAgentTask(
                 summary: updateOrRegenerate === 'update' ? 'Updated OpenSCAD model' : 'Generated OpenSCAD model',
             };
         } catch (err) {
+            recordChatError(modelName, { agent: task.agent, source: 'agent:openscad' }, err as Error);
             const fallback = isNonEmptyString(current)
                 ? current
                 : fallbackOpenSCAD(description, bounds);
@@ -318,7 +322,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -326,6 +330,7 @@ export async function executeAgentTask(
             max_tokens: 3000,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:bom' });
 
         const content = response.choices[0]?.message?.content;
         const fallbackBom = isNonEmptyString(current) ? normalizeBomMarkdown(current) : '';
@@ -356,7 +361,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -364,6 +369,7 @@ export async function executeAgentTask(
             max_tokens: 3000,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:assembly' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -392,7 +398,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -400,6 +406,7 @@ export async function executeAgentTask(
             max_tokens: 4000,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:firmware' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -427,7 +434,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -435,6 +442,7 @@ export async function executeAgentTask(
             max_tokens: 2500,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:schematic' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -464,7 +472,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -472,6 +480,7 @@ export async function executeAgentTask(
             max_tokens: 2500,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:safety' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -504,7 +513,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -512,6 +521,7 @@ export async function executeAgentTask(
             max_tokens: 2500,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:sustainability' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -541,7 +551,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -549,6 +559,7 @@ export async function executeAgentTask(
             max_tokens: 2500,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:cost-optimization' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -578,7 +589,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -586,6 +597,7 @@ export async function executeAgentTask(
             max_tokens: 2500,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:dfm' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -613,7 +625,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -621,6 +633,7 @@ export async function executeAgentTask(
             max_tokens: 2500,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:marketing' });
 
         const content = response.choices[0]?.message?.content;
         return {
@@ -649,7 +662,7 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         const response = await getLLMClient().chat.completions.create({
-            model: getModelName('text', options?.model),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
@@ -657,6 +670,7 @@ export async function executeAgentTask(
             max_tokens: 2500,
             stream: false as const,
         });
+        recordChatUsage(response, modelName, { agent: task.agent, source: 'agent:patent-risk' });
 
         const content = response.choices[0]?.message?.content;
         return {

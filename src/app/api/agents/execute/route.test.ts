@@ -16,7 +16,30 @@ vi.mock('@/lib/openai', () => ({
     }),
     getModelName: () => 'test-model',
     isOfflineMode: () => false,
-    handleOpenAIError: vi.fn()
+    recordChatUsage: vi.fn(),
+    recordChatError: vi.fn()
+}));
+
+vi.mock('@/lib/metrics', () => ({
+    __esModule: true,
+    trackAgentExecution: vi.fn(),
+    trackError: vi.fn(),
+    trackRequest: vi.fn(),
+    default: {
+        trackAgentExecution: vi.fn(),
+        trackError: vi.fn(),
+        trackRequest: vi.fn()
+    }
+}));
+
+// Mock apiContext to avoid redis
+vi.mock('@/lib/apiContext', () => ({
+    createApiContext: () => ({
+        rateLimitResponse: null,
+        finalize: (res: any) => res,
+        logError: vi.fn(),
+        requestId: 'test-req-id'
+    })
 }));
 
 describe('POST /api/agents/execute', () => {
@@ -113,7 +136,6 @@ describe('POST /api/agents/execute', () => {
         expect(data.success).toBe(true);
 
         const scene = data.updatedOutputs['scene-json'];
-        // Colors should be preserved from LLM, not forced to white/grey
         expect(scene).toContain('#8B4513');
         expect(data.updatedOutputs.openscad).toContain('cube');
     });

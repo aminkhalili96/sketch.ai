@@ -1,7 +1,7 @@
 // 3D Scene Reflection and Validation
 // This module provides LLM-based self-critique for generated 3D scenes
 
-import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { z } from 'zod';
 import type { sceneSchema } from '@/lib/validators';
@@ -181,6 +181,7 @@ export async function llmJudgeScene(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
+        recordChatUsage(response, getModelName('text'), { source: 'reflection:judge' });
 
         let jsonContent = response.choices[0]?.message?.content;
         if (!jsonContent) {
@@ -198,6 +199,7 @@ export async function llmJudgeScene(
             score: result.score ?? 5
         };
     } catch (error) {
+        recordChatError(getModelName('text'), { source: 'reflection:judge' }, error as Error);
         console.error('LLM judge failed, using quick validation:', error);
         return quickValidateScene(elements, description);
     }
@@ -230,6 +232,7 @@ export async function llmFixScene(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
+        recordChatUsage(response, getModelName('text'), { source: 'reflection:fix' });
 
         let jsonContent = response.choices[0]?.message?.content;
         if (!jsonContent) {
@@ -253,6 +256,7 @@ export async function llmFixScene(
             ]
         };
     } catch (error) {
+        recordChatError(getModelName('text'), { source: 'reflection:fix' }, error as Error);
         console.error('LLM fix failed:', error);
         return {
             fixedScene: elements,

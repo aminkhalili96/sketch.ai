@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError, recordChatError } from '@/lib/openai';
 import { agentsExecuteRequestSchema } from '@/lib/validators';
 import { executeAgentTask, expandRequestedOutputs } from '@/lib/agents/registry';
 import { fallbackScene, normalizeSceneColors, parseSceneElements } from '@/lib/scene';
@@ -49,10 +49,11 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const ctx = {
+        const agentCtx = {
             description: projectContext?.description || '',
             analysis: projectContext?.analysis,
             outputs: projectContext?.outputs,
+            requestId: ctx.requestId, // Pass requestId if needed
         };
 
         // Validate ids and dependencies up-front to avoid deadlocks.
@@ -96,25 +97,26 @@ export async function POST(request: NextRequest) {
 
             const start = Date.now();
             try {
-                const result = await executeAgentTask(task, ctx, llmClient, shared, { model });
+                const result = await executeAgentTask(task, agentCtx, llmClient, shared, { model });
                 trackAgentExecution(task.agent, true, Date.now() - start);
-                ctx.outputs = { ...(ctx.outputs ?? {}), [result.outputType]: result.content };
+                agentCtx.outputs = { ...(agentCtx.outputs ?? {}), [result.outputType]: result.content };
                 return result;
             } catch (err) {
                 trackAgentExecution(task.agent, false, Date.now() - start);
+                recordChatError(getModelName('text', model), { requestId: ctx.requestId, source: `agents:execute:${task.outputType}`, agent: task.agent }, err as Error);
                 const message = err instanceof Error ? err.message : 'Unknown error';
-                const existing = ctx.outputs?.[task.outputType];
+                const existing = (agentCtx.outputs as Record<string, string>)?.[task.outputType];
                 const existingText = typeof existing === 'string' ? existing : '';
 
                 if (task.outputType === 'scene-json') {
                     const description =
-                        buildProjectDescription(ctx.description, ctx.analysis?.summary) ||
-                        ctx.description ||
-                        ctx.analysis?.summary ||
+                        buildProjectDescription(agentCtx.description, agentCtx.analysis?.summary) ||
+                        agentCtx.description ||
+                        agentCtx.analysis?.summary ||
                         'Hardware project';
                     const scene = normalizeSceneColors(fallbackScene(description));
                     shared.sceneElements = scene;
-                    ctx.outputs = { ...(ctx.outputs ?? {}), 'scene-json': JSON.stringify(scene, null, 2) };
+                    agentCtx.outputs = { ...(agentCtx.outputs ?? {}), 'scene-json': JSON.stringify(scene, null, 2) };
                     return {
                         outputType: 'scene-json' as const,
                         content: JSON.stringify(scene, null, 2),

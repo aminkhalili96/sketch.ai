@@ -1,5 +1,5 @@
 // Visual Aesthetics Critic Agent - Evaluates visual appeal of 3D models
-import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 
 export interface VisualCritiqueResult {
@@ -108,6 +108,7 @@ export async function critiqueVisualAppeal(
             stream: false as const,
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
+        recordChatUsage(response, modelName, { source: 'agent:visual-critic' });
 
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -131,6 +132,7 @@ export async function critiqueVisualAppeal(
             overallImpression: critique.overallImpression || 'Visual quality evaluated'
         };
     } catch (error) {
+        recordChatError(modelName, { source: 'agent:visual-critic' }, error as Error);
         console.error('Visual critique failed:', error);
 
         // Fallback: assume it needs improvement

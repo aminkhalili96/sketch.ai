@@ -4,6 +4,8 @@ import { promisify } from 'util';
 import { writeFile, readFile, unlink, mkdtemp, rm } from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
 
 const execFileAsync = promisify(execFile);
 const MAX_OPENSCAD_CHARS = 300_000;
@@ -21,6 +23,11 @@ interface CompileResponse {
 }
 
 export async function POST(request: NextRequest) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.ai);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     try {
         const body: CompileRequest = await request.json();
         const { openscadCode, format = 'stl' } = body;
@@ -28,24 +35,24 @@ export async function POST(request: NextRequest) {
             typeof format === 'string' ? format.toLowerCase() : 'stl';
 
         if (!openscadCode || typeof openscadCode !== 'string') {
-            return NextResponse.json<CompileResponse>(
+            return ctx.finalize(NextResponse.json<CompileResponse>(
                 { success: false, error: 'OpenSCAD code is required' },
                 { status: 400 }
-            );
+            ));
         }
 
         if (!ALLOWED_FORMATS.has(normalizedFormat)) {
-            return NextResponse.json<CompileResponse>(
+            return ctx.finalize(NextResponse.json<CompileResponse>(
                 { success: false, error: 'Invalid export format requested' },
                 { status: 400 }
-            );
+            ));
         }
 
         if (openscadCode.length > MAX_OPENSCAD_CHARS) {
-            return NextResponse.json<CompileResponse>(
+            return ctx.finalize(NextResponse.json<CompileResponse>(
                 { success: false, error: 'OpenSCAD code is too large to compile' },
                 { status: 413 }
-            );
+            ));
         }
 
         const tempDir = await mkdtemp(path.join(os.tmpdir(), 'sketch-ai-3d-'));
@@ -82,10 +89,10 @@ export async function POST(request: NextRequest) {
             await unlink(scadFile).catch(() => { });
             await unlink(outputFile).catch(() => { });
 
-            return NextResponse.json<CompileResponse>({
+            return ctx.finalize(NextResponse.json<CompileResponse>({
                 success: true,
                 stlBase64,
-            });
+            }));
 
         } catch (execError) {
             const errorMessage = execError instanceof Error ? execError.message : 'Compilation failed';
@@ -93,28 +100,29 @@ export async function POST(request: NextRequest) {
 
             // Check if OpenSCAD is not installed
             if (errorCode === 'ENOENT' || errorMessage.includes('command not found') || errorMessage.includes('ENOENT')) {
-                return NextResponse.json<CompileResponse>(
+                return ctx.finalize(NextResponse.json<CompileResponse>(
                     {
                         success: false,
                         error: 'OpenSCAD is not installed. Install via: brew install openscad'
                     },
                     { status: 500 }
-                );
+                ));
             }
 
-            return NextResponse.json<CompileResponse>(
+            return ctx.finalize(NextResponse.json<CompileResponse>(
                 { success: false, error: errorMessage },
                 { status: 500 }
-            );
+            ));
         } finally {
             await rm(tempDir, { recursive: true, force: true }).catch(() => { });
         }
 
     } catch (error) {
         console.error('Compile 3D error:', error);
-        return NextResponse.json<CompileResponse>(
+        ctx.logError(error as Error);
+        return ctx.finalize(NextResponse.json<CompileResponse>(
             { success: false, error: 'An unexpected error occurred' },
             { status: 500 }
-        );
+        ));
     }
 }

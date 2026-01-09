@@ -80,19 +80,18 @@ export async function POST(request: NextRequest) {
                     }
                 }
 
-                if (usage) {
-                    recordTokenUsage(
-                        modelName,
-                        usage.prompt_tokens ?? 0,
-                        usage.completion_tokens ?? 0,
-                        { requestId: ctx.requestId, source: 'chat:stream' }
-                    );
-                }
+                recordTokenUsage(
+                    modelName,
+                    usage?.prompt_tokens ?? 0,
+                    usage?.completion_tokens ?? 0,
+                    { requestId: ctx.requestId, source: 'chat:stream' }
+                );
 
                 send({ type: 'done' });
                 controller.close();
             } catch (error) {
                 let message = 'An unexpected error occurred';
+                ctx.logError(error as Error);
                 recordChatError(getModelName('text'), { requestId: ctx.requestId, source: 'chat:stream' }, error as Error);
                 try {
                     await handleOpenAIError(error);
