@@ -183,7 +183,7 @@ export function PresentationView({ onExit }: PresentationViewProps) {
         }
         const elements = isExploded ? presentation.exploded : presentation.assembled;
         return JSON.stringify(elements, null, 2);
-    }, [kind, sceneJson, presentation, isExploded]);
+    }, [kind, sceneJson, presentation, isExploded, description]);
 
     const sceneMode = kind === 'enclosure' ? 'presentation' : 'default';
     const boardShape = presentation.boardShape;

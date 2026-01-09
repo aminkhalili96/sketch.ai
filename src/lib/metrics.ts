@@ -20,11 +20,6 @@ interface MetricValue {
     values: number[]; // For percentile calculations
 }
 
-interface Counter {
-    value: number;
-    labels: Record<string, string>;
-}
-
 type MetricType = 'counter' | 'histogram' | 'gauge';
 
 interface MetricDefinition {
@@ -275,7 +270,7 @@ export function trackError(type: string, source: string): void {
     incrementCounter('errors_total', { type, source });
 }
 
-export default {
+const metricsApi = {
     incrementCounter,
     recordHistogram,
     setGauge,
@@ -288,3 +283,5 @@ export default {
     trackOpenAICall,
     trackError,
 };
+
+export default metricsApi;

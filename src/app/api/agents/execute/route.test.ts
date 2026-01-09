@@ -36,7 +36,7 @@ vi.mock('@/lib/metrics', () => ({
 vi.mock('@/lib/apiContext', () => ({
     createApiContext: () => ({
         rateLimitResponse: null,
-        finalize: (res: any) => res,
+        finalize: (res: Response) => res,
         logError: vi.fn(),
         requestId: 'test-req-id'
     })

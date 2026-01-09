@@ -193,7 +193,7 @@ export function checkDailyBudget(budgetUsd: number = 10): boolean {
     return false;
 }
 
-export default {
+const tokenTrackerApi = {
     trackTokenUsage,
     getUsageSummary,
     getTodayUsage,
@@ -201,3 +201,5 @@ export default {
     estimateCost,
     checkDailyBudget,
 };
+
+export default tokenTrackerApi;
