@@ -17,7 +17,7 @@ interface RateLimitWindow {
     resetAt: number;
 }
 
-interface RateLimitConfig {
+export interface RateLimitConfig {
     windowMs: number;      // Time window in milliseconds
     maxRequests: number;   // Max requests per window
     keyPrefix?: string;    // Optional prefix for the key

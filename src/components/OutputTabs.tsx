@@ -12,7 +12,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { SceneRenderer } from '@/components/SceneRenderer';
 import { buildProjectDescription } from '@/lib/projectDescription';
 import { parseBomTable } from '@/lib/bom';
-import type { ProjectMetadata } from '@/types';
+import type { ProjectMetadata, ProjectOutputs } from '@/types';
 
 type OutputType = 'bom' | 'assembly' | 'firmware' | 'schematic' | 'openscad';
 type GenerateOutputType = OutputType | 'scene-json';
@@ -519,28 +519,28 @@ export function OutputTabs() {
         const sceneJson = outputs['scene-json'];
 
         if (sceneJson) {
-        return (
-            <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                        <p className="text-sm font-medium text-neutral-900">3D Preview</p>
-                        <p className="text-xs text-neutral-500">Toggle exploded view to inspect parts.</p>
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p className="text-sm font-medium text-neutral-900">3D Preview</p>
+                            <p className="text-xs text-neutral-500">Toggle exploded view to inspect parts.</p>
+                        </div>
+                        <Button
+                            onClick={() => setIsExploded((prev) => !prev)}
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full"
+                        >
+                            {isExploded ? 'Compact View' : 'Exploded View'}
+                        </Button>
                     </div>
-                    <Button
-                        onClick={() => setIsExploded((prev) => !prev)}
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full"
-                    >
-                        {isExploded ? 'Compact View' : 'Exploded View'}
-                    </Button>
-                </div>
 
-                <SceneRenderer sceneJson={sceneJson} exploded={isExploded} />
+                    <SceneRenderer sceneJson={sceneJson} exploded={isExploded} />
 
-                <div className="flex gap-2 flex-wrap items-center justify-between border-t border-neutral-100 pt-4">
-                    <h3 className="text-sm font-medium text-neutral-900">OpenSCAD Source</h3>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap items-center justify-between border-t border-neutral-100 pt-4">
+                        <h3 className="text-sm font-medium text-neutral-900">OpenSCAD Source</h3>
+                        <div className="flex gap-2">
                             <Button
                                 onClick={handleCompile3D}
                                 disabled={isCompiling}
