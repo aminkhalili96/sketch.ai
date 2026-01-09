@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError, recordChatError, recordChatUsage } from '@/lib/openai';
 import { SYSTEM_PROMPT, CHAT_REFINEMENT_PROMPT, fillPromptTemplate } from '@/lib/prompts';
 import { chatRequestSchema } from '@/lib/validators';
 import type { ChatResponse } from '@/types';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
 
 function explainEmptyChoice(choice: unknown): string {
     if (!choice || typeof choice !== 'object') return 'AI returned an empty response.';
@@ -23,21 +25,27 @@ function explainEmptyChoice(choice: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.ai);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     try {
         const body = await request.json();
 
         // Validate request
         const validationResult = chatRequestSchema.safeParse(body);
         if (!validationResult.success) {
-            return NextResponse.json<ChatResponse>(
+            return ctx.finalize(NextResponse.json<ChatResponse>(
                 { success: false, error: validationResult.error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         const { message, history, projectContext, model } = validationResult.data;
 
         const openai = getLLMClient();
+        const modelName = getModelName('text', model);
 
         // Build context-aware prompt
         const contextPrompt = fillPromptTemplate(CHAT_REFINEMENT_PROMPT, {
@@ -68,11 +76,13 @@ export async function POST(request: NextRequest) {
         messages.push({ role: 'user', content: message });
 
         const response = await openai.chat.completions.create({
-            model: getModelName('text', model),
+            model: modelName,
             messages,
             max_tokens: 2000,
             stream: false as const,
         });
+
+        recordChatUsage(response, modelName, { requestId: ctx.requestId, source: 'chat' });
 
         const firstChoice = response.choices?.[0];
         const reply = firstChoice?.message?.content;
@@ -87,10 +97,10 @@ export async function POST(request: NextRequest) {
             } catch {
                 // Ignore logging failures.
             }
-            return NextResponse.json<ChatResponse>(
+            return ctx.finalize(NextResponse.json<ChatResponse>(
                 { success: false, error: explainEmptyChoice(firstChoice) },
                 { status: 500 }
-            );
+            ));
         }
 
         // Analyze response for suggested actions
@@ -112,27 +122,29 @@ export async function POST(request: NextRequest) {
             suggestedActions.push('Regenerate firmware code');
         }
 
-        return NextResponse.json<ChatResponse>({
+        return ctx.finalize(NextResponse.json<ChatResponse>({
             success: true,
             reply,
             suggestedActions: suggestedActions.length > 0 ? suggestedActions : undefined,
-        });
+        }));
 
     } catch (error) {
         console.error('Chat error:', error);
+        ctx.logError(error as Error);
+        recordChatError(getModelName('text'), { requestId: ctx.requestId, source: 'chat' }, error as Error);
 
         try {
             await handleOpenAIError(error);
         } catch (handledError) {
-            return NextResponse.json<ChatResponse>(
+            return ctx.finalize(NextResponse.json<ChatResponse>(
                 { success: false, error: (handledError as Error).message },
                 { status: 500 }
-            );
+            ));
         }
 
-        return NextResponse.json<ChatResponse>(
+        return ctx.finalize(NextResponse.json<ChatResponse>(
             { success: false, error: 'An unexpected error occurred' },
             { status: 500 }
-        );
+        ));
     }
 }

@@ -280,6 +280,12 @@ export function ChatInterface() {
         { id: 'assembly', label: 'Assembly' },
         { id: 'firmware', label: 'Firmware' },
         { id: 'schematic', label: 'Schematic' },
+        { id: 'safety', label: 'Safety Review' },
+        { id: 'sustainability', label: 'Sustainability' },
+        { id: 'cost-optimization', label: 'Cost Optimization' },
+        { id: 'dfm', label: 'DFM' },
+        { id: 'marketing', label: 'Marketing' },
+        { id: 'patent-risk', label: 'Patent Risk' },
     ];
     const orderedRequestedOutputs = requestedOutputs
         .slice()

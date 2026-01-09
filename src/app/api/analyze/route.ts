@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, isOfflineMode, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, handleOpenAIError, recordChatError, recordChatUsage } from '@/lib/openai';
 import { DESCRIPTION_ANALYSIS_PROMPT, SYSTEM_PROMPT, VISION_ANALYSIS_PROMPT } from '@/lib/prompts';
 import { analyzeRequestSchema, analysisResultSchema } from '@/lib/validators';
 import type { AnalyzeResponse, AnalysisResult } from '@/types';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
 
 function explainEmptyChoice(choice: unknown): string {
     if (!choice || typeof choice !== 'object') return 'AI returned an empty response.';
@@ -68,11 +70,13 @@ function tryParseJson(content: string): unknown | null {
 async function analyzeFromDescription(
     openai: OpenAIClient,
     description: string,
-    preferredModel?: string
+    preferredModel?: string,
+    telemetry?: { requestId?: string }
 ): Promise<AnalysisResult | null> {
     try {
+        const modelName = getModelName('text', preferredModel);
         const response = await openai.chat.completions.create({
-            model: getModelName('text', preferredModel),
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 {
@@ -85,6 +89,8 @@ async function analyzeFromDescription(
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
 
+        recordChatUsage(response, modelName, { requestId: telemetry?.requestId, source: 'analyze:description' });
+
         const content = response.choices?.[0]?.message?.content;
         if (!content) return null;
 
@@ -95,6 +101,7 @@ async function analyzeFromDescription(
 
         return analysisValidation.data;
     } catch (error) {
+        recordChatError(getModelName('text', preferredModel), { requestId: telemetry?.requestId, source: 'analyze:description' }, error as Error);
         console.warn('Analyze: description-only analysis failed', error);
         return null;
     }
@@ -137,11 +144,12 @@ function buildLocalFallback(description?: string): AnalysisResult {
 async function buildFallbackAnalysis(
     openai: OpenAIClient,
     description?: string,
-    preferredModel?: string
+    preferredModel?: string,
+    telemetry?: { requestId?: string }
 ): Promise<AnalysisResult> {
     const trimmed = description?.trim() ?? '';
     if (trimmed) {
-        const descriptionOnly = await analyzeFromDescription(openai, trimmed, preferredModel);
+        const descriptionOnly = await analyzeFromDescription(openai, trimmed, preferredModel, telemetry);
         if (descriptionOnly) return descriptionOnly;
     }
 
@@ -149,21 +157,27 @@ async function buildFallbackAnalysis(
 }
 
 export async function POST(request: NextRequest) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.analyze);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     try {
         const body = await request.json();
 
         // Validate request
         const validationResult = analyzeRequestSchema.safeParse(body);
         if (!validationResult.success) {
-            return NextResponse.json<AnalyzeResponse>(
+            return ctx.finalize(NextResponse.json<AnalyzeResponse>(
                 { success: false, error: validationResult.error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         const { image, description, model } = validationResult.data;
 
         const openai = getLLMClient();
+        const visionModel = getModelName('vision', model);
 
         // Build the prompt with optional description
         let userPrompt = VISION_ANALYSIS_PROMPT;
@@ -172,7 +186,7 @@ export async function POST(request: NextRequest) {
         }
 
         const response = await openai.chat.completions.create({
-            model: getModelName('vision', model),
+            model: visionModel,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 {
@@ -194,6 +208,8 @@ export async function POST(request: NextRequest) {
             ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } }),
         });
 
+        recordChatUsage(response, visionModel, { requestId: ctx.requestId, source: 'analyze:vision' });
+
         const firstChoice = response.choices?.[0];
         const content = firstChoice?.message?.content;
         if (!content) {
@@ -211,71 +227,72 @@ export async function POST(request: NextRequest) {
             } catch {
                 // Ignore logging failures.
             }
-            const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model);
-            return NextResponse.json<AnalyzeResponse>({
+            const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model, { requestId: ctx.requestId });
+            return ctx.finalize(NextResponse.json<AnalyzeResponse>({
                 success: true,
                 analysis: fallbackAnalysis
-            });
+            }));
         }
 
         const rawAnalysis = tryParseJson(content);
         if (!rawAnalysis) {
             if (isOfflineMode()) {
-                const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model);
-                return NextResponse.json<AnalyzeResponse>({
+                const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model, { requestId: ctx.requestId });
+                return ctx.finalize(NextResponse.json<AnalyzeResponse>({
                     success: true,
                     analysis: fallbackAnalysis
-                });
+                }));
             }
-            return NextResponse.json<AnalyzeResponse>(
+            return ctx.finalize(NextResponse.json<AnalyzeResponse>(
                 { success: false, error: 'Failed to parse AI response' },
                 { status: 500 }
-            );
+            ));
         }
         const analysisValidation = analysisResultSchema.safeParse(rawAnalysis);
         if (!analysisValidation.success) {
             if (isOfflineMode()) {
-                const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model);
-                return NextResponse.json<AnalyzeResponse>({
+                const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model, { requestId: ctx.requestId });
+                return ctx.finalize(NextResponse.json<AnalyzeResponse>({
                     success: true,
                     analysis: fallbackAnalysis
-                });
+                }));
             }
-            return NextResponse.json<AnalyzeResponse>(
+            return ctx.finalize(NextResponse.json<AnalyzeResponse>(
                 { success: false, error: 'AI response did not match expected format' },
                 { status: 500 }
-            );
+            ));
         }
 
         const analysis: AnalysisResult = analysisValidation.data;
 
-        return NextResponse.json<AnalyzeResponse>({
+        return ctx.finalize(NextResponse.json<AnalyzeResponse>({
             success: true,
             analysis,
-        });
+        }));
 
     } catch (error) {
         console.error('Analyze error:', error);
+        ctx.logError(error as Error);
 
         if (error instanceof SyntaxError) {
-            return NextResponse.json<AnalyzeResponse>(
+            return ctx.finalize(NextResponse.json<AnalyzeResponse>(
                 { success: false, error: 'Failed to parse AI response' },
                 { status: 500 }
-            );
+            ));
         }
 
         try {
             await handleOpenAIError(error);
         } catch (handledError) {
-            return NextResponse.json<AnalyzeResponse>(
+            return ctx.finalize(NextResponse.json<AnalyzeResponse>(
                 { success: false, error: (handledError as Error).message },
                 { status: 500 }
-            );
+            ));
         }
 
-        return NextResponse.json<AnalyzeResponse>(
+        return ctx.finalize(NextResponse.json<AnalyzeResponse>(
             { success: false, error: 'An unexpected error occurred' },
             { status: 500 }
-        );
+        ));
     }
 }

@@ -97,5 +97,16 @@ export function getModelDescription(modelId: string): string | undefined {
 }
 
 export function isVisionCapableModel(modelId: string): boolean {
-    return modelId === 'gpt-4o';
+    const capableModels = [
+        'gpt-4o',
+        'gpt-4o-mini',
+        'gpt-4.5-turbo',
+        'gpt-5.2',
+        'gpt-5.2-pro',
+        'gpt-5.1',
+        'gpt-5',
+        'gpt-4-turbo'
+    ];
+    return capableModels.includes(modelId);
 }
+

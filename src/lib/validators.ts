@@ -191,6 +191,12 @@ export const requestedOutputSchema = z.enum([
     'firmware',
     'schematic',
     '3d-model',
+    'safety',
+    'sustainability',
+    'cost-optimization',
+    'dfm',
+    'marketing',
+    'patent-risk',
 ]);
 
 export const agentOutputTypeSchema = z.enum([
@@ -200,6 +206,12 @@ export const agentOutputTypeSchema = z.enum([
     'schematic',
     'openscad',
     'scene-json',
+    'safety',
+    'sustainability',
+    'cost-optimization',
+    'dfm',
+    'marketing',
+    'patent-risk',
 ]);
 
 export const agentNameSchema = z.enum([
@@ -210,6 +222,12 @@ export const agentNameSchema = z.enum([
     'SchematicAgent',
     'SceneJsonAgent',
     'OpenSCADAgent',
+    'SafetyAgent',
+    'SustainabilityAgent',
+    'CostOptimizerAgent',
+    'DFMAgent',
+    'MarketingAgent',
+    'PatentRiskAgent',
 ]);
 
 export const agentTaskSchema = z.object({

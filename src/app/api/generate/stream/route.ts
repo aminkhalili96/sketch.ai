@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode } from '@/lib/openai';
+import { NextRequest, NextResponse } from 'next/server';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { searchComponentPrice } from '@/lib/tavily';
 import {
     SYSTEM_PROMPT,
@@ -18,8 +18,15 @@ import { orchestrate3DGeneration } from '@/lib/agents';
 import { buildProjectDescription } from '@/lib/projectDescription';
 import { infer3DKind } from '@/lib/projectKind';
 import { normalizeBomMarkdown } from '@/lib/bom';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.ai);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
@@ -167,14 +174,17 @@ Describe the circuit connections in detail, including:
                     }
 
                     try {
+                        const modelName = getModelName('text', model);
                         const response = await llmClient.chat.completions.create({
-                            model: getModelName('text', model),
+                            model: modelName,
                             messages: [
                                 { role: 'system', content: SYSTEM_PROMPT },
                                 { role: 'user', content: prompt },
                             ],
                             max_tokens: 4000,
                         });
+
+                        recordChatUsage(response, modelName, { requestId: ctx.requestId, source: `generate:stream:${outputType}` });
 
                         const content = response.choices[0]?.message?.content;
                         if (content) {
@@ -184,6 +194,7 @@ Describe the circuit connections in detail, including:
                             send({ type: 'status', outputType, message: `No content generated for ${outputType}.` });
                         }
                     } catch (err) {
+                        recordChatError(getModelName('text', model), { requestId: ctx.requestId, source: `generate:stream:${outputType}` }, err as Error);
                         console.error(`Failed to generate ${outputType}:`, err);
                         send({
                             type: 'status',
@@ -212,8 +223,9 @@ Describe the circuit connections in detail, including:
                     });
 
                     try {
+                        const modelName = getModelName('text', model);
                         const response = await llmClient.chat.completions.create({
-                            model: getModelName('text', model),
+                            model: modelName,
                             messages: [
                                 { role: 'system', content: SYSTEM_PROMPT },
                                 { role: 'user', content: prompt },
@@ -221,10 +233,13 @@ Describe the circuit connections in detail, including:
                             max_tokens: 4000,
                         });
 
+                        recordChatUsage(response, modelName, { requestId: ctx.requestId, source: 'generate:stream:openscad' });
+
                         const content = response.choices[0]?.message?.content;
                         outputs.openscad = content || fallbackOpenSCAD(mergedDescription, bounds);
                         send({ type: 'output', outputType: 'openscad', content: outputs.openscad });
                     } catch (err) {
+                        recordChatError(getModelName('text', model), { requestId: ctx.requestId, source: 'generate:stream:openscad' }, err as Error);
                         console.error('Failed to generate openscad:', err);
                         outputs.openscad = fallbackOpenSCAD(mergedDescription, bounds);
                         send({
@@ -251,6 +266,7 @@ Describe the circuit connections in detail, including:
                 controller.close();
             } catch (error) {
                 let message = 'An unexpected error occurred';
+                ctx.logError(error as Error);
                 try {
                     await handleOpenAIError(error);
                 } catch (handledError) {
@@ -262,11 +278,13 @@ Describe the circuit connections in detail, including:
         },
     });
 
-    return new Response(stream, {
+    const response = new NextResponse(stream, {
         headers: {
             'Content-Type': 'application/x-ndjson; charset=utf-8',
             'Cache-Control': 'no-cache',
             Connection: 'keep-alive',
         },
     });
+
+    return ctx.finalize(response);
 }

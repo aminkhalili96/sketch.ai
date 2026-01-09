@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
 import { agentPlanSchema, agentsPlanRequestSchema } from '@/lib/validators';
 import { normalizePlanForRequest } from '@/lib/agents/registry';
 import type { AgentsPlanResponse, AgentPlan } from '@/types';
+import { createApiContext } from '@/lib/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
 
 function formatExistingOutputs(outputs: Record<string, unknown> | undefined): string {
     if (!outputs) return 'No outputs generated yet';
@@ -13,20 +15,26 @@ function formatExistingOutputs(outputs: Record<string, unknown> | undefined): st
 }
 
 export async function POST(request: NextRequest) {
+    const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.ai);
+    if (ctx.rateLimitResponse) {
+        return ctx.finalize(ctx.rateLimitResponse);
+    }
+
     try {
         const body = await request.json();
 
         const validationResult = agentsPlanRequestSchema.safeParse(body);
         if (!validationResult.success) {
-            return NextResponse.json<AgentsPlanResponse>(
+            return ctx.finalize(NextResponse.json<AgentsPlanResponse>(
                 { success: false, error: validationResult.error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         const { message, requestedOutputs, projectContext, model } = validationResult.data;
 
         const llmClient = getLLMClient();
+        const modelName = getModelName('text', model);
 
         const description = projectContext?.description || 'No project description provided';
         const analysis = projectContext?.analysis
@@ -50,14 +58,14 @@ Current project context:
 Return ONLY valid JSON matching this schema:
 {
   "version": 1,
-  "requestedOutputs": ["bom" | "assembly" | "firmware" | "schematic" | "3d-model"],
+  "requestedOutputs": ["bom" | "assembly" | "firmware" | "schematic" | "3d-model" | "safety" | "sustainability" | "cost-optimization" | "dfm" | "marketing" | "patent-risk"],
   "summary": "short human summary",
   "questions": ["optional clarifying question"],
   "tasks": [
     {
       "id": "t1",
-      "agent": "BOMAgent" | "AssemblyAgent" | "FirmwareAgent" | "SchematicAgent" | "SceneJsonAgent" | "OpenSCADAgent",
-      "outputType": "bom" | "assembly" | "firmware" | "schematic" | "scene-json" | "openscad",
+      "agent": "BOMAgent" | "AssemblyAgent" | "FirmwareAgent" | "SchematicAgent" | "SceneJsonAgent" | "OpenSCADAgent" | "SafetyAgent" | "SustainabilityAgent" | "CostOptimizerAgent" | "DFMAgent" | "MarketingAgent" | "PatentRiskAgent",
+      "outputType": "bom" | "assembly" | "firmware" | "schematic" | "scene-json" | "openscad" | "safety" | "sustainability" | "cost-optimization" | "dfm" | "marketing" | "patent-risk",
       "action": "update" | "regenerate",
       "instruction": "task-specific instruction",
       "dependsOn": ["tX"]
@@ -77,7 +85,7 @@ Rules:
 
         try {
             const response = await llmClient.chat.completions.create({
-                model: getModelName('text', model),
+                model: modelName,
                 messages: [
                     { role: 'user', content: plannerPrompt },
                 ],
@@ -89,7 +97,10 @@ Rules:
             if (content) {
                 rawPlan = JSON.parse(content);
             }
+
+            recordChatUsage(response, modelName, { requestId: ctx.requestId, source: 'agents:plan' });
         } catch {
+            recordChatError(modelName, { requestId: ctx.requestId, source: 'agents:plan' });
             // Fall back to a deterministic plan.
         }
 
@@ -111,25 +122,27 @@ Rules:
             normalized.summary = `Proposed updates: ${requestedOutputs.join(', ')}`;
         }
 
-        return NextResponse.json<AgentsPlanResponse>({
+        return ctx.finalize(NextResponse.json<AgentsPlanResponse>({
             success: true,
             plan: normalized,
-        });
+        }));
     } catch (error) {
         console.error('Agents plan error:', error);
+        ctx.logError(error as Error);
+        recordChatError(getModelName('text'), { requestId: ctx.requestId, source: 'agents:plan' }, error as Error);
 
         try {
             await handleOpenAIError(error);
         } catch (handledError) {
-            return NextResponse.json<AgentsPlanResponse>(
+            return ctx.finalize(NextResponse.json<AgentsPlanResponse>(
                 { success: false, error: (handledError as Error).message },
                 { status: 500 }
-            );
+            ));
         }
 
-        return NextResponse.json<AgentsPlanResponse>(
+        return ctx.finalize(NextResponse.json<AgentsPlanResponse>(
             { success: false, error: 'An unexpected error occurred' },
             { status: 500 }
-        );
+        ));
     }
 }

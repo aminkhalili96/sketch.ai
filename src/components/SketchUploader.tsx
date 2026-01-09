@@ -90,6 +90,13 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
         const file = acceptedFiles[0];
         if (!file) return;
 
+        // Strict type check
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+            setError('Unsupported image format. Please use JPEG, PNG, WebP, or GIF.');
+            return;
+        }
+
         resetGeneratedData();
         try {
             // Resize if > 1MB roughly check or just always resize for safety
@@ -99,23 +106,30 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
             setSketch(resizedBase64);
         } catch (error) {
             console.error("Image resize failed", error);
-            // Fallback to original
-            const reader = new FileReader();
-            reader.onload = () => {
-                setPreview(reader.result as string);
-                setSketch(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            setError('Failed to process image. Please try another file.');
         }
-    }, [resetGeneratedData, setSketch]);
+    }, [resetGeneratedData, setSketch, setError]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         accept: {
-            'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/png': ['.png'],
+            'image/webp': ['.webp'],
+            'image/gif': ['.gif']
         },
         maxFiles: 1,
-        maxSize: 10 * 1024 * 1024,
+        maxSize: 10 * 1024 * 1024, // 10MB
+        onDropRejected: (fileRejections) => {
+            const error = fileRejections[0]?.errors[0];
+            if (error?.code === 'file-invalid-type') {
+                setError('Unsupported file type. Please upload a JPG, PNG, GIF or WebP image.');
+            } else if (error?.code === 'file-too-large') {
+                setError('File is too large. Maximum size is 10MB.');
+            } else {
+                setError('Could not accept this file.');
+            }
+        }
     });
 
     const handleAnalyze = async () => {

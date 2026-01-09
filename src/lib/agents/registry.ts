@@ -445,6 +445,43 @@ export async function executeAgentTask(
     }
 
     // =========================================================================
+    // SAFETY AGENT
+    // =========================================================================
+    if (task.outputType === 'safety') {
+        const bom = ctx.outputs?.bom || 'Not generated';
+
+        const prompt = [
+            fillPromptTemplate(SAFETY_REVIEW_PROMPT, {
+                description,
+                bom,
+            }),
+            '',
+            `User instruction: ${task.instruction}`,
+            '',
+            updateOrRegenerate === 'update' && isNonEmptyString(current)
+                ? `Existing safety report (update this):\n\n${current}`
+                : '',
+        ].filter(Boolean).join('\n');
+
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: prompt },
+            ],
+            max_tokens: 2500,
+            stream: false as const,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        return {
+            outputType: 'safety',
+            content: content || (isNonEmptyString(current) ? current : ''),
+            summary: updateOrRegenerate === 'update' ? 'Updated safety review' : 'Generated safety review',
+        };
+    }
+
+    // =========================================================================
     // SUSTAINABILITY AGENT
     // =========================================================================
     if (task.outputType === 'sustainability') {

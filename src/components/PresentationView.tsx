@@ -147,11 +147,16 @@ function SchematicDiagram({ description, analysis }: SchematicDiagramProps) {
         return <div className="text-xs text-neutral-400">No schematic generated yet.</div>;
     }
 
+    const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+
     return (
-        <div
-            className="rounded-lg border border-neutral-200 bg-white p-2"
-            dangerouslySetInnerHTML={{ __html: svg }}
-        />
+        <div className="rounded-lg border border-neutral-200 bg-white p-2">
+            <img
+                src={dataUrl}
+                alt="Circuit diagram"
+                className="w-full h-auto"
+            />
+        </div>
     );
 }
 

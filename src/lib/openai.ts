@@ -6,6 +6,9 @@ import {
     isVisionCapableModel,
     normalizeModelId,
 } from '@/lib/modelCatalog';
+import { logger } from '@/lib/logger';
+import { trackOpenAICall, trackError } from '@/lib/metrics';
+import { trackTokenUsage } from '@/lib/tokenTracker';
 
 // Model configuration for offline mode
 export const OFFLINE_MODELS: Record<'vision' | 'text', string> = {
@@ -32,6 +35,8 @@ export function isOfflineMode(): boolean {
 export function getOpenAIClient(): OpenAI {
     if (!openaiClient) {
         const apiKey = process.env.OPENAI_API_KEY;
+        const baseURL = process.env.OPENAI_BASE_URL;
+        const organization = process.env.OPENAI_ORG_ID;
 
         if (!apiKey) {
             throw new Error('OPENAI_API_KEY environment variable is not set');
@@ -39,6 +44,8 @@ export function getOpenAIClient(): OpenAI {
 
         openaiClient = new OpenAI({
             apiKey,
+            baseURL: baseURL?.trim() || undefined,
+            organization: organization?.trim() || undefined,
         });
     }
 
@@ -88,6 +95,75 @@ export function getModelName(taskType: 'vision' | 'text', preferredModel?: strin
         return selected;
     }
     return process.env.OPENAI_VISION_MODEL?.trim() || DEFAULT_OPENAI_VISION_MODEL;
+}
+
+type UsageTokens = {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+};
+
+type OpenAITelemetryContext = {
+    requestId?: string;
+    source?: string;
+    agent?: string;
+};
+
+export function recordChatUsage(
+    response: unknown,
+    model: string,
+    context?: OpenAITelemetryContext
+): void {
+    const usage = (response as { usage?: UsageTokens } | null)?.usage;
+    const inputTokens = usage?.prompt_tokens ?? 0;
+    const outputTokens = usage?.completion_tokens ?? 0;
+
+    trackOpenAICall(model, true, inputTokens, outputTokens);
+    if (usage) {
+        trackTokenUsage(model, inputTokens, outputTokens, context?.requestId);
+    }
+
+    logger.info('OpenAI call complete', {
+        requestId: context?.requestId,
+        source: context?.source,
+        agent: context?.agent,
+        model,
+        inputTokens,
+        outputTokens,
+    });
+}
+
+export function recordChatError(
+    model: string,
+    context?: OpenAITelemetryContext,
+    error?: Error
+): void {
+    trackOpenAICall(model, false, 0, 0);
+    trackError('openai', context?.source ?? 'unknown');
+    logger.error('OpenAI call failed', {
+        requestId: context?.requestId,
+        source: context?.source,
+        agent: context?.agent,
+        model,
+    }, error);
+}
+
+export function recordTokenUsage(
+    model: string,
+    inputTokens: number,
+    outputTokens: number,
+    context?: OpenAITelemetryContext
+): void {
+    trackOpenAICall(model, true, inputTokens, outputTokens);
+    trackTokenUsage(model, inputTokens, outputTokens, context?.requestId);
+    logger.info('OpenAI stream usage', {
+        requestId: context?.requestId,
+        source: context?.source,
+        agent: context?.agent,
+        model,
+        inputTokens,
+        outputTokens,
+    });
 }
 
 // Helper for error handling

@@ -3,13 +3,9 @@
 // This middleware runs on EVERY request before it reaches your API routes.
 // It provides:
 // 1. Request logging with unique IDs
-// 2. Rate limiting enforcement
-// 3. Optional API key authentication
-// 4. CORS headers
-// 5. Security headers
-//
-// Note: For performance, rate limiting here uses a simplified check.
-// Full rate limiting logic is in the API routes themselves.
+// 2. Optional API key authentication
+// 3. CORS headers
+// 4. Security headers
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -17,37 +13,6 @@ import type { NextRequest } from 'next/server';
 // Generate unique request ID
 function generateRequestId(): string {
     return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-// Simple in-memory rate limit check for middleware
-// This is a quick check; full logic is in rateLimit.ts
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
-
-function quickRateLimitCheck(ip: string, limit: number = 100): boolean {
-    const now = Date.now();
-    const windowMs = 60 * 1000; // 1 minute
-
-    let record = requestCounts.get(ip);
-    if (!record || record.resetAt < now) {
-        record = { count: 0, resetAt: now + windowMs };
-    }
-
-    record.count++;
-    requestCounts.set(ip, record);
-
-    return record.count <= limit;
-}
-
-// Cleanup old entries periodically
-if (typeof setInterval !== 'undefined') {
-    setInterval(() => {
-        const now = Date.now();
-        for (const [key, record] of requestCounts.entries()) {
-            if (record.resetAt < now) {
-                requestCounts.delete(key);
-            }
-        }
-    }, 60 * 1000);
 }
 
 export function middleware(request: NextRequest) {
@@ -62,39 +27,6 @@ export function middleware(request: NextRequest) {
         url.includes('.')
     ) {
         return NextResponse.next();
-    }
-
-    // Get client IP
-    const forwarded = request.headers.get('X-Forwarded-For');
-    const ip = forwarded?.split(',')[0].trim() ||
-        request.headers.get('X-Real-IP') ||
-        'unknown';
-
-    // Rate limiting (quick check)
-    if (url.startsWith('/api/')) {
-        // Stricter limit for AI endpoints
-        const limit = url.includes('/analyze') || url.includes('/agents') || url.includes('/generate')
-            ? 20  // 20 requests/minute for AI endpoints
-            : 100; // 100 requests/minute for other endpoints
-
-        if (!quickRateLimitCheck(ip, limit)) {
-            console.warn(`[${requestId}] Rate limit exceeded for ${ip} on ${url}`);
-            return new NextResponse(
-                JSON.stringify({
-                    success: false,
-                    error: 'Too many requests. Please try again later.',
-                    retryAfter: 60,
-                }),
-                {
-                    status: 429,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Retry-After': '60',
-                        'X-Request-ID': requestId,
-                    },
-                }
-            );
-        }
     }
 
     // Optional API key authentication
@@ -151,7 +83,6 @@ export function middleware(request: NextRequest) {
             requestId,
             method: request.method,
             path: url,
-            ip,
             duration: `${duration}ms`,
         }));
     }

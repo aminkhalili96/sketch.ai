@@ -162,6 +162,9 @@ export function withRateLimit(
     request: Request,
     config: RateLimitConfig = RATE_LIMIT_CONFIGS.general
 ): NextResponse | null {
+    if (process.env.NODE_ENV === 'test') {
+        return null;
+    }
     const identifier = getClientIdentifier(request);
     const result = checkRateLimit(identifier, config);
 
