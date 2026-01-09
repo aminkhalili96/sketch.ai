@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, handleOpenAIError } from '@/lib/openai';
 import { agentsExecuteRequestSchema } from '@/lib/validators';
 import { executeAgentTask, expandRequestedOutputs } from '@/lib/agents/registry';
 import { fallbackScene, normalizeSceneColors, parseSceneElements } from '@/lib/scene';
@@ -18,9 +18,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { plan, projectContext } = validationResult.data;
+        const { plan, projectContext, model } = validationResult.data;
 
-        const openai = getOpenAIClient();
+        const llmClient = getLLMClient();
 
         const previousOutputs = projectContext?.outputs ?? {};
         const allowedOutputs = new Set(expandRequestedOutputs(plan.requestedOutputs));
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
             }
 
             try {
-                const result = await executeAgentTask(task, ctx, openai, shared);
+                const result = await executeAgentTask(task, ctx, llmClient, shared, { model });
                 ctx.outputs = { ...(ctx.outputs ?? {}), [result.outputType]: result.content };
                 return result;
             } catch (err) {
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
             if (!allowedOutputs.has(res.outputType)) continue;
             if (typeof res.content === 'string' && res.content.trim().length > 0) {
                 updatedOutputs[res.outputType] = res.content;
-                const before = previousOutputs[res.outputType];
+                const before = (previousOutputs as ProjectOutputs)[res.outputType];
                 const beforeText = typeof before === 'string' ? before : '';
                 const beforeLines = beforeText ? beforeText.split('\n').length : 0;
                 const afterLines = res.content.split('\n').length;

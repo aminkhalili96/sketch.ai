@@ -33,6 +33,7 @@ export function OutputTabs() {
     const [stlDownloadUrl, setStlDownloadUrl] = useState<string | null>(null);
     const [isBuildingGuide, setIsBuildingGuide] = useState(false);
     const [generationLogs, setGenerationLogs] = useState<string[]>([]);
+    const [pipelineTrace, setPipelineTrace] = useState<string[]>([]);
     const stlUrlRef = useRef<string | null>(null);
 
     const {
@@ -47,6 +48,7 @@ export function OutputTabs() {
         pushOutputsSnapshot,
         replaceOutputs,
         setError,
+        selectedModel,
     } = useProjectStore();
 
     const outputs = currentProject?.outputs || {};
@@ -90,6 +92,7 @@ export function OutputTabs() {
         setGenerating(true);
         setError(null);
         setGenerationLogs([]);
+        setPipelineTrace([]);
         appendGenerationLog('Preparing generation...');
 
         try {
@@ -107,6 +110,7 @@ export function OutputTabs() {
                 analysisContext: currentProject.analysis,
                 outputTypes: outputTypesToRequest,
                 sketchImage: currentProject.sketchBase64,
+                model: selectedModel,
             };
 
             const streamed = await (async () => {
@@ -143,6 +147,7 @@ export function OutputTabs() {
                             outputType?: OutputType | 'scene-json';
                             content?: string;
                             metadata?: unknown;
+                            trace?: string[];
                             error?: string;
                         };
 
@@ -152,6 +157,8 @@ export function OutputTabs() {
                             setOutputs({ [event.outputType]: event.content });
                         } else if (event.type === 'metadata' && event.metadata) {
                             setMetadata(event.metadata as ProjectMetadata);
+                        } else if (event.type === 'trace' && Array.isArray(event.trace)) {
+                            setPipelineTrace(event.trace);
                         } else if (event.type === 'error') {
                             throw new Error(event.error || 'Generation failed');
                         } else if (event.type === 'done') {
@@ -180,6 +187,9 @@ export function OutputTabs() {
                 setOutputs(data.outputs);
                 if (data.metadata) {
                     setMetadata(data.metadata);
+                }
+                if (Array.isArray(data.trace)) {
+                    setPipelineTrace(data.trace);
                 }
                 appendGenerationLog('Generation complete.');
             }
@@ -701,6 +711,23 @@ export function OutputTabs() {
                                 <div key={`${log}-${idx}`} className="flex items-start gap-2">
                                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-neutral-300" />
                                     <span>{log}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {pipelineTrace.length > 0 && (
+                    <div className="mx-4 mt-4 rounded-xl border border-neutral-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-neutral-800">Pipeline Trace</span>
+                            <span className="text-xs text-neutral-400">{pipelineTrace.length} steps</span>
+                        </div>
+                        <div className="mt-2 space-y-1 text-xs text-neutral-600">
+                            {pipelineTrace.map((step, idx) => (
+                                <div key={`${step}-${idx}`} className="flex items-start gap-2">
+                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-neutral-300" />
+                                    <span>{step}</span>
                                 </div>
                             ))}
                         </div>

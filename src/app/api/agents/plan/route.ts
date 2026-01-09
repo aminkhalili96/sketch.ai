@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode } from '@/lib/openai';
 import { agentPlanSchema, agentsPlanRequestSchema } from '@/lib/validators';
 import { normalizePlanForRequest } from '@/lib/agents/registry';
 import type { AgentsPlanResponse, AgentPlan } from '@/types';
@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { message, requestedOutputs, projectContext } = validationResult.data;
+        const { message, requestedOutputs, projectContext, model } = validationResult.data;
 
-        const openai = getOpenAIClient();
+        const llmClient = getLLMClient();
 
         const description = projectContext?.description || 'No project description provided';
         const analysis = projectContext?.analysis
@@ -76,13 +76,13 @@ Rules:
         let rawPlan: unknown = null;
 
         try {
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o',
+            const response = await llmClient.chat.completions.create({
+                model: getModelName('text', model),
                 messages: [
                     { role: 'user', content: plannerPrompt },
                 ],
                 max_tokens: 1200,
-                response_format: { type: 'json_object' },
+                ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } }),
             });
 
             const content = response.choices[0]?.message?.content;
@@ -133,4 +133,3 @@ Rules:
         );
     }
 }
-

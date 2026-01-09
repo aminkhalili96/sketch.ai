@@ -1,5 +1,5 @@
 // Vision Analyzer Agent - Extracts object structure from sketch image
-import { getOpenAIClient, withRetry } from '@/lib/openai';
+import { getLLMClient, getModelName, withRetry, isOfflineMode } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 
 export interface VisionAnalysis {
@@ -92,13 +92,19 @@ function inferFromDescriptionFallback(description?: string): VisionAnalysis {
     };
 }
 
-export async function analyzeSketchVision(imageBase64: string, description?: string): Promise<VisionAnalysis> {
-    const openai = getOpenAIClient();
+export async function analyzeSketchVision(
+    imageBase64: string,
+    description?: string,
+    preferredModel?: string
+): Promise<VisionAnalysis> {
+    const llmClient = getLLMClient();
+    const modelName = getModelName('vision', preferredModel);
 
     try {
         const response = await withRetry(async () => {
-            return await openai.chat.completions.create({
-                model: 'gpt-4o',
+            // Build the request - Ollama/LLaVA may not support JSON mode
+            const requestOptions: Parameters<typeof llmClient.chat.completions.create>[0] = {
+                model: modelName,
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
                     {
@@ -116,16 +122,32 @@ export async function analyzeSketchVision(imageBase64: string, description?: str
                     }
                 ],
                 max_tokens: 1500,
-                response_format: { type: 'json_object' }
-            }, { timeout: 45000 }); // 45s timeout
+                stream: false as const, // Ensure non-streaming response
+            };
+
+            // Only add response_format for OpenAI (Ollama/LLaVA may not support it)
+            if (!isOfflineMode()) {
+                requestOptions.response_format = { type: 'json_object' };
+            }
+
+            return await llmClient.chat.completions.create(requestOptions);
         });
 
-        const content = response.choices[0]?.message?.content;
+        // Type assertion since we set stream: false
+        const content = (response as { choices: { message: { content: string | null } }[] }).choices[0]?.message?.content;
         if (!content) {
             throw new Error('No response from vision analysis');
         }
 
-        const analysis = JSON.parse(content) as VisionAnalysis;
+        // Parse JSON from response (handle potential markdown code blocks from local models)
+        let jsonContent = content;
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+            jsonContent = jsonMatch[1].trim();
+        }
+
+        const analysis = JSON.parse(jsonContent) as VisionAnalysis;
+
 
         // Validate and provide defaults
         return {

@@ -8,13 +8,15 @@ import { NextRequest } from 'next/server';
 // Mock OpenAI
 const mockCreate = vi.fn();
 vi.mock('@/lib/openai', () => ({
-    getOpenAIClient: () => ({
+    getLLMClient: () => ({
         chat: {
             completions: {
                 create: mockCreate
             }
         }
     }),
+    getModelName: () => 'test-model',
+    isOfflineMode: () => false,
     handleOpenAIError: vi.fn()
 }));
 

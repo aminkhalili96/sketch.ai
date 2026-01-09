@@ -42,7 +42,7 @@ yarn-error.log*
 next-env.d.ts
 
 # personal/sensitive docs
-doc/INTERVIEW.md
+docs/private/
 
 # local experiments
 k8s/

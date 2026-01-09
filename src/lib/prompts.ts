@@ -303,6 +303,336 @@ Rules:
 - Include at least: body, head, 2 ears, muzzle, 2 arms, 2 legs (9+ elements)
 - Output ONLY valid JSON (no markdown, no code fences, no comments).`;
 
+export const SCHEMATIC_SVG_PROMPT = `You are generating a clean electronics schematic as SVG.
+
+Project: {description}
+Components: {components}
+Features: {features}
+
+Requirements:
+- Output ONLY valid SVG (no markdown, no code fences, no explanations).
+- White background, black lines, minimal color accents (labels in #111).
+- Use simple symbols: rectangles for ICs, zig-zag lines for resistors, parallel lines for capacitors.
+- Show clear labels and net names.
+- Keep aspect ratio ~700x420.
+
+The SVG MUST start with: <svg ...> and end with </svg>.`;
+export const SAFETY_REVIEW_PROMPT = `Perform a comprehensive safety review of this hardware design (ISO 12100 / IEC 62368 standards).
+
+Project: {description}
+BOM Components: {bom}
+
+Analyze for the following hazards:
+1. **Mechanical**: Sharp edges, pinch points, structural weakness (3D print orientation).
+2. **Electrical**: Battery risks (LiPo/Li-Ion), exposed voltage, lack of fusing/protection.
+3. **Thermal**: Heat dissipation issues, flammable materials (PLA vs ABS/PETG).
+4. **Chemical/Material**: Toxic materials, food safety issues (if applicable), UV degradation.
+5. **Child Safety**: Small parts (choking hazard <3y), battery accessibility (coin cells).
+
+Output a STRUCTURED MARKDOWN report:
+
+# Safety Compliance Report
+
+## 🟢 Passed Checks
+- [List safe aspects]
+
+## ⚠️ Warnings (Low/Medium Risk)
+- [List potential issues with mitigation suggestions]
+
+## 🛑 Critical Failures (High Risk)
+- [List immediate dangers that MUST be fixed]
+
+## Recommended Actions
+- [Bullet points for specific fixes]
+
+If no critical errors are found, mark the Status as PASSED. If critical errors exist, mark as FAILED.`;
+
+
+
+// ============================================================================
+// SUSTAINABILITY ANALYSIS AGENT
+// ============================================================================
+export const SUSTAINABILITY_ANALYSIS_PROMPT = `You are an Environmental Impact Analyst specializing in product lifecycle assessment (ISO 14040/14044).
+
+Project: {description}
+BOM Components: {bom}
+3D Model Volume Estimate: {volumeEstimate}
+
+Perform a comprehensive sustainability analysis:
+
+## 1. Material Impact Assessment
+For each material in the BOM:
+- Estimate embodied carbon (kg CO2e per kg material)
+- Calculate total carbon footprint
+- Rate recyclability (A-F)
+
+Material Reference Data:
+- PLA: ~2.5 kg CO2e/kg, biodegradable, grade A
+- ABS: ~3.8 kg CO2e/kg, recyclable #7, grade C
+- PETG: ~3.2 kg CO2e/kg, recyclable #1, grade B
+- Aluminum: ~8.1 kg CO2e/kg, highly recyclable, grade A
+- Steel: ~1.8 kg CO2e/kg, recyclable, grade A
+- FR4 PCB: ~5.2 kg CO2e/kg, difficult to recycle, grade D
+- Lithium battery: ~12 kg CO2e/kg, hazardous waste, grade F
+
+## 2. Eco-Friendly Alternatives
+Suggest lower-impact alternatives for high-carbon components.
+
+## 3. End-of-Life Analysis
+- Disassembly complexity (easy/moderate/difficult)
+- Recyclable percentage
+- Hazardous materials present
+
+Output a STRUCTURED MARKDOWN report:
+
+# Sustainability Report 🌱
+
+## Overall Grade: [A-F]
+**Total Carbon Footprint:** X.X kg CO2e
+
+## Material Breakdown
+| Material | Mass (g) | CO2e (kg) | Recyclability | Notes |
+|----------|----------|-----------|---------------|-------|
+| ... | ... | ... | ... | ... |
+
+## 🌿 Eco Alternatives
+- [Suggestions to reduce impact]
+
+## ♻️ End-of-Life Recommendations
+- [Recycling guidance]`;
+
+
+// ============================================================================
+// COST OPTIMIZATION AGENT
+// ============================================================================
+export const COST_OPTIMIZATION_PROMPT = `You are a Supply Chain Cost Engineer specializing in hardware BOM optimization.
+
+Project: {description}
+Current BOM: {bom}
+
+Analyze the BOM and identify cost reduction opportunities:
+
+## 1. Component-Level Analysis
+For each expensive component (>$5):
+- Find functionally equivalent alternatives
+- Compare specs vs. cost tradeoff
+- Identify bulk pricing breakpoints
+
+## 2. Supplier Optimization
+- Suggest alternative suppliers (LCSC, AliExpress, direct from manufacturer)
+- Identify components that could be consolidated
+
+## 3. Design-for-Cost Suggestions
+- Components that could be eliminated with design changes
+- Standard vs. custom part opportunities
+
+Output a STRUCTURED MARKDOWN report:
+
+# Cost Optimization Report 💰
+
+## Summary
+**Current Estimated Cost:** [calculated from BOM]
+**Optimized Estimated Cost:** [after applying suggestions]
+**Potential Savings:** [amount] ([percentage]%)
+
+## High-Impact Opportunities
+| Current Part | Cost | Alternative | New Cost | Savings | Notes |
+|--------------|------|-------------|----------|---------|-------|
+| ... | ... | ... | ... | ... | ... |
+
+## Bulk Pricing Opportunities
+- [List MOQ breakpoints]
+
+## Design Simplification Ideas
+- [Suggestions to reduce part count]
+
+## ⚠️ Quality Tradeoffs
+- [Warnings about any quality compromises]`;
+
+
+// ============================================================================
+// DESIGN FOR MANUFACTURING (DFM) AGENT
+// ============================================================================
+export const DFM_ANALYSIS_PROMPT = `You are a Manufacturing Engineer specializing in Design for Manufacturing (DFM) and Design for Assembly (DFA).
+
+Project: {description}
+3D Model Description: {sceneDescription}
+Target Manufacturing Methods: 3D Printing (FDM/SLA), Injection Molding, CNC
+
+Analyze the design for manufacturability issues:
+
+## 1. 3D Printing (FDM) Analysis
+- Overhang angles (flag >45° without support)
+- Wall thickness (minimum 1.2mm for FDM)
+- Bridging distances (max 10mm without sag)
+- Orientation recommendations
+
+## 2. 3D Printing (SLA/Resin) Analysis
+- Suction cups / hollow cavities (need drain holes)
+- Minimum feature size (0.3mm)
+- Support removal accessibility
+
+## 3. Injection Molding Readiness
+- Draft angles (minimum 1-2° for ejection)
+- Uniform wall thickness (2-4mm ideal)
+- Undercuts requiring side actions
+- Gate location suggestions
+
+## 4. Assembly Considerations
+- Snap-fit feasibility
+- Screw boss design
+- Alignment features
+
+Output a STRUCTURED MARKDOWN report:
+
+# DFM Analysis Report 🏭
+
+## Manufacturing Readiness Score: [1-10]
+
+## 🖨️ 3D Printing (FDM)
+### ✅ Good
+- [Positive aspects]
+
+### ⚠️ Warnings
+- [Issues that will work but need attention]
+
+### 🛑 Critical Issues
+- [Must fix before printing]
+
+## 🔧 Injection Molding Readiness
+- Draft angles: [OK/NEEDS WORK]
+- Wall uniformity: [OK/NEEDS WORK]
+- Undercuts: [None/Fixable/Complex tooling required]
+
+## 📐 Recommended Design Changes
+| Issue | Location | Suggested Fix | Priority |
+|-------|----------|---------------|----------|
+| ... | ... | ... | High/Medium/Low |`;
+
+
+// ============================================================================
+// MARKETING & BRANDING AGENT
+// ============================================================================
+export const MARKETING_GENERATION_PROMPT = `You are a Product Marketing Specialist with expertise in hardware crowdfunding campaigns (Kickstarter, Indiegogo).
+
+Project: {description}
+Key Features: {features}
+Target Audience: Makers, hobbyists, tech enthusiasts
+
+Create compelling marketing content:
+
+## 1. Product Naming
+- Generate 3 creative product names
+- Include tagline for each
+
+## 2. Elevator Pitch
+- 30-second description
+- Hook + Problem + Solution + Call-to-action
+
+## 3. Feature Highlights
+- Transform technical specs into benefits
+- Create "Why it matters" explanations
+
+## 4. Crowdfunding Campaign Copy
+- Headline
+- Subheadline
+- Key selling points (bullet format)
+- Social proof suggestions
+
+Output a STRUCTURED MARKDOWN report:
+
+# Marketing Brief 📦
+
+## Product Name Options
+1. **[Name 1]** — "[Tagline 1]"
+2. **[Name 2]** — "[Tagline 2]"
+3. **[Name 3]** — "[Tagline 3]"
+
+## 🎯 Elevator Pitch
+> [30-second pitch in quotes]
+
+## ✨ Feature → Benefit Translation
+| Technical Feature | Customer Benefit |
+|-------------------|------------------|
+| ... | ... |
+
+## 📣 Crowdfunding Campaign Copy
+
+### Headline
+**[Attention-grabbing headline]**
+
+### Subheadline
+[Supporting statement]
+
+### Key Selling Points
+- ✅ [Point 1]
+- ✅ [Point 2]
+- ✅ [Point 3]
+
+## 🎨 Visual Suggestions
+- [Ideas for product photos/renders]`;
+
+
+// ============================================================================
+// PATENT & IP RISK AGENT
+// ============================================================================
+export const PATENT_RISK_PROMPT = `You are an Intellectual Property Analyst specializing in hardware patents and prior art research.
+
+Project: {description}
+Key Components: {components}
+Novel Features: {features}
+
+Perform a preliminary IP risk assessment:
+
+## 1. Novel Feature Identification
+- List potentially patentable aspects
+- Identify commodity/standard components (no IP concern)
+
+## 2. Prior Art Keywords
+- Generate search terms for patent databases (Google Patents, USPTO, Espacenet)
+- Suggest classification codes (CPC/IPC)
+
+## 3. Risk Assessment
+- Flag features that are commonly patented in this domain
+- Identify "patent thicket" areas to be cautious about
+
+## 4. Freedom-to-Operate Considerations
+- Known patent holders in this space
+- Suggestions for design-arounds
+
+**DISCLAIMER:** This is a preliminary heuristic analysis, NOT legal advice. Consult a patent attorney for actual FTO opinions.
+
+Output a STRUCTURED MARKDOWN report:
+
+# Patent & IP Risk Assessment 📋
+
+> ⚠️ **Disclaimer:** This is an AI-generated preliminary analysis, not legal advice.
+
+## Risk Level: [LOW / MEDIUM / HIGH]
+
+## 🔍 Novel Features Identified
+| Feature | Patentability | Risk Level | Notes |
+|---------|---------------|------------|-------|
+| ... | High/Medium/Low | 🟢🟡🔴 | ... |
+
+## 🔎 Prior Art Search Keywords
+- "[keyword 1]"
+- "[keyword 2]"
+- "[keyword 3]"
+
+**Suggested Patent Classifications:**
+- [CPC/IPC codes]
+
+## ⚠️ Areas of Concern
+- [Known patent-heavy areas]
+
+## 💡 Design-Around Suggestions
+- [Ways to reduce IP risk]
+
+## 📞 Next Steps
+1. Search Google Patents with keywords above
+2. Review top 5-10 results for relevance
+3. Consult IP attorney if pursuing commercial use`;
 
 
 

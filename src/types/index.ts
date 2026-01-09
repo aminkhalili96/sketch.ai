@@ -23,6 +23,12 @@ export interface ProjectOutputs {
     schematic?: string;
     openscad?: string;
     'scene-json'?: string;
+    safety?: string;
+    sustainability?: string;
+    'cost-optimization'?: string;
+    dfm?: string;
+    marketing?: string;
+    'patent-risk'?: string;
 }
 
 export interface ProjectMetadata {
@@ -49,6 +55,7 @@ export interface Project {
 export interface AnalyzeRequest {
     image: string; // Base64 encoded image
     description?: string;
+    model?: string;
 }
 
 export interface AnalyzeResponse {
@@ -61,12 +68,14 @@ export interface GenerateRequest {
     projectDescription: string;
     analysisContext?: AnalysisResult;
     outputTypes: ('bom' | 'assembly' | 'firmware' | 'schematic' | 'openscad' | 'scene-json')[];
+    model?: string;
 }
 
 export interface GenerateResponse {
     success: boolean;
     outputs?: ProjectOutputs;
     metadata?: ProjectMetadata;
+    trace?: string[];
     error?: string;
 }
 
@@ -78,6 +87,7 @@ export interface ChatRequest {
         analysis?: AnalysisResult;
         outputs?: ProjectOutputs;
     };
+    model?: string;
 }
 
 export interface ChatResponse {
@@ -89,7 +99,18 @@ export interface ChatResponse {
 }
 
 // Agents API Types (confirm-before-apply)
-export type RequestedOutput = 'bom' | 'assembly' | 'firmware' | 'schematic' | '3d-model';
+export type RequestedOutput =
+    | 'bom'
+    | 'assembly'
+    | 'firmware'
+    | 'schematic'
+    | '3d-model'
+    | 'safety'
+    | 'sustainability'
+    | 'cost-optimization'
+    | 'dfm'
+    | 'marketing'
+    | 'patent-risk';
 export type AgentOutputType = keyof ProjectOutputs;
 export type AgentName =
     | 'ProjectManagerAgent'
@@ -98,7 +119,13 @@ export type AgentName =
     | 'FirmwareAgent'
     | 'SchematicAgent'
     | 'SceneJsonAgent'
-    | 'OpenSCADAgent';
+    | 'OpenSCADAgent'
+    | 'SafetyAgent'
+    | 'SustainabilityAgent'
+    | 'CostOptimizerAgent'
+    | 'DFMAgent'
+    | 'MarketingAgent'
+    | 'PatentRiskAgent';
 
 export interface AgentTask {
     id: string;
@@ -126,6 +153,7 @@ export interface AgentsPlanRequest {
         outputs?: ProjectOutputs;
         metadata?: ProjectMetadata;
     };
+    model?: string;
 }
 
 export interface AgentsPlanResponse {
@@ -137,6 +165,7 @@ export interface AgentsPlanResponse {
 export interface AgentsExecuteRequest {
     plan: AgentPlan;
     projectContext?: AgentsPlanRequest['projectContext'];
+    model?: string;
 }
 
 export interface AgentsExecuteResponse {

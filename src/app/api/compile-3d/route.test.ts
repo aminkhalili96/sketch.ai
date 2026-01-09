@@ -6,9 +6,9 @@ import { POST } from './route';
 import { NextRequest } from 'next/server';
 
 // Mock child_process
-const mockExec = vi.fn();
+const mockExecFile = vi.fn();
 vi.mock('child_process', () => ({
-    exec: (cmd: string, opts: unknown, cb: unknown) => mockExec(cmd, opts, cb)
+    execFile: (cmd: string, args: string[], opts: unknown, cb: unknown) => mockExecFile(cmd, args, opts, cb)
 }));
 
 // Mock fs/promises
@@ -16,7 +16,8 @@ vi.mock('fs/promises', () => ({
     writeFile: vi.fn(),
     readFile: vi.fn().mockResolvedValue(Buffer.from('mock-stl-content')),
     unlink: vi.fn().mockResolvedValue(undefined),
-    mkdir: vi.fn()
+    mkdtemp: vi.fn().mockResolvedValue('/tmp/sketch-ai-3d-test'),
+    rm: vi.fn().mockResolvedValue(undefined)
 }));
 
 // Mock util.promisify

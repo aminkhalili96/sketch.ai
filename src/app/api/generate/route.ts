@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode } from '@/lib/openai';
 import { searchComponentPrice } from '@/lib/tavily';
 import {
     SYSTEM_PROMPT,
@@ -32,13 +32,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { projectDescription, analysisContext, outputTypes, sketchImage } = validationResult.data;
+        const { projectDescription, analysisContext, outputTypes, sketchImage, model } = validationResult.data;
         const mergedDescription =
             buildProjectDescription(projectDescription, analysisContext?.summary) || projectDescription;
         const uniqueOutputTypes = Array.from(new Set(outputTypes));
 
-        const openai = getOpenAIClient();
+        const llmClient = getLLMClient();
         const outputs: ProjectOutputs = {};
+        const allowPricingLookup = !isOfflineMode();
 
         // Build context from analysis
         const components = analysisContext?.identifiedComponents.join(', ') || 'Not specified';
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
             radius?: number;
             smoothness?: number;
         }> | null = null;
+        let pipelineTrace: string[] | undefined;
 
         if (uniqueOutputTypes.includes('scene-json')) {
             console.log('Starting multi-agent 3D generation pipeline...');
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
                 const result = await orchestrate3DGeneration(
                     sketchImage, // Pass the sketch image for vision analysis
                     mergedDescription,
-                    { maxIterations: 2, minAcceptableScore: 7 }
+                    { maxIterations: 2, minAcceptableScore: 7, model }
                 );
 
                 console.log('Agent pipeline completed:', {
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
 
                 // Log for debugging
                 result.logs.forEach(log => console.log('[Agent]', log));
+                pipelineTrace = result.logs;
 
                 // Convert to scene elements format
                 const kind3d = infer3DKind(mergedDescription, analysisContext);
@@ -87,6 +90,7 @@ export async function POST(request: NextRequest) {
             } catch (err) {
                 console.error('Agent pipeline failed:', err);
                 // Use intelligent fallback that detects object type from description
+                pipelineTrace = ['3D pipeline failed, using fallback scene.'];
                 sceneElements = fallbackScene(mergedDescription);
                 outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
             }
@@ -103,16 +107,18 @@ export async function POST(request: NextRequest) {
                     const componentList = components.split(',').map(c => c.trim());
                     let pricingContext = '';
 
-                    try {
-                        const prices = await Promise.all(
-                            componentList.slice(0, 5).map(async (comp) => { // Limit to 5 queries
-                                const price = await searchComponentPrice(comp);
-                                return `${comp}: ${price}`;
-                            })
-                        );
-                        pricingContext = prices.join('\n');
-                    } catch (e) {
-                        console.error('Pricing search failed', e);
+                    if (allowPricingLookup) {
+                        try {
+                            const prices = await Promise.all(
+                                componentList.slice(0, 5).map(async (comp) => { // Limit to 5 queries
+                                    const price = await searchComponentPrice(comp);
+                                    return `${comp}: ${price}`;
+                                })
+                            );
+                            pricingContext = prices.join('\n');
+                        } catch (e) {
+                            console.error('Pricing search failed', e);
+                        }
                     }
 
                     prompt = fillPromptTemplate(BOM_GENERATION_PROMPT, {
@@ -157,8 +163,8 @@ Describe the circuit connections in detail, including:
             }
 
             try {
-                const response = await openai.chat.completions.create({
-                    model: 'gpt-4o',
+                const response = await llmClient.chat.completions.create({
+                    model: getModelName('text', model),
                     messages: [
                         { role: 'system', content: SYSTEM_PROMPT },
                         { role: 'user', content: prompt },
@@ -194,8 +200,8 @@ Describe the circuit connections in detail, including:
             });
 
             try {
-                const response = await openai.chat.completions.create({
-                    model: 'gpt-4o',
+                const response = await llmClient.chat.completions.create({
+                    model: getModelName('text', model),
                     messages: [
                         { role: 'system', content: SYSTEM_PROMPT },
                         { role: 'user', content: prompt },
@@ -230,6 +236,7 @@ Describe the circuit connections in detail, including:
             success: true,
             outputs,
             metadata,
+            trace: pipelineTrace,
         });
 
     } catch (error) {

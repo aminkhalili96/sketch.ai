@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode } from '@/lib/openai';
 import { searchComponentPrice } from '@/lib/tavily';
 import {
     SYSTEM_PROMPT,
@@ -38,13 +38,14 @@ export async function POST(request: NextRequest) {
                     return;
                 }
 
-                const { projectDescription, analysisContext, outputTypes, sketchImage } = validationResult.data;
+                const { projectDescription, analysisContext, outputTypes, sketchImage, model } = validationResult.data;
                 const mergedDescription =
                     buildProjectDescription(projectDescription, analysisContext?.summary) || projectDescription;
                 const uniqueOutputTypes = Array.from(new Set(outputTypes));
 
-                const openai = getOpenAIClient();
+                const llmClient = getLLMClient();
                 const outputs: ProjectOutputs = {};
+                const allowPricingLookup = !isOfflineMode();
 
                 const components = analysisContext?.identifiedComponents.join(', ') || 'Not specified';
                 const features = analysisContext?.suggestedFeatures.join(', ') || 'Not specified';
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
                     radius?: number;
                     smoothness?: number;
                 }> | null = null;
+                let pipelineTrace: string[] | undefined;
 
                 send({ type: 'status', message: 'Starting generation...' });
 
@@ -70,9 +72,10 @@ export async function POST(request: NextRequest) {
                         const result = await orchestrate3DGeneration(
                             sketchImage,
                             mergedDescription,
-                            { maxIterations: 2, minAcceptableScore: 7 }
+                            { maxIterations: 2, minAcceptableScore: 7, model }
                         );
 
+                        pipelineTrace = result.logs;
                         const kind3d = infer3DKind(mergedDescription, analysisContext);
                         const sanitized = sanitizeSceneElements(result.scene, { kind: kind3d });
                         const baseScene = sanitized.length > 0 ? sanitized : fallbackScene(mergedDescription);
@@ -80,8 +83,12 @@ export async function POST(request: NextRequest) {
 
                         outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
                         send({ type: 'output', outputType: 'scene-json', content: outputs['scene-json'] });
+                        if (pipelineTrace) {
+                            send({ type: 'trace', trace: pipelineTrace });
+                        }
                     } catch (err) {
                         console.error('Agent pipeline failed:', err);
+                        pipelineTrace = ['3D pipeline failed, using fallback scene.'];
                         sceneElements = fallbackScene(mergedDescription);
                         outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
                         send({
@@ -90,6 +97,7 @@ export async function POST(request: NextRequest) {
                             message: '3D pipeline failed, using fallback scene.',
                         });
                         send({ type: 'output', outputType: 'scene-json', content: outputs['scene-json'] });
+                        send({ type: 'trace', trace: pipelineTrace });
                     }
                 }
 
@@ -104,16 +112,18 @@ export async function POST(request: NextRequest) {
                             const componentList = components.split(',').map(c => c.trim());
                             let pricingContext = '';
 
-                            try {
-                                const prices = await Promise.all(
-                                    componentList.slice(0, 5).map(async (comp) => {
-                                        const price = await searchComponentPrice(comp);
-                                        return `${comp}: ${price}`;
-                                    })
-                                );
-                                pricingContext = prices.join('\n');
-                            } catch (e) {
-                                console.error('Pricing search failed', e);
+                            if (allowPricingLookup) {
+                                try {
+                                    const prices = await Promise.all(
+                                        componentList.slice(0, 5).map(async (comp) => {
+                                            const price = await searchComponentPrice(comp);
+                                            return `${comp}: ${price}`;
+                                        })
+                                    );
+                                    pricingContext = prices.join('\n');
+                                } catch (e) {
+                                    console.error('Pricing search failed', e);
+                                }
                             }
 
                             prompt = fillPromptTemplate(BOM_GENERATION_PROMPT, {
@@ -157,8 +167,8 @@ Describe the circuit connections in detail, including:
                     }
 
                     try {
-                        const response = await openai.chat.completions.create({
-                            model: 'gpt-4o',
+                        const response = await llmClient.chat.completions.create({
+                            model: getModelName('text', model),
                             messages: [
                                 { role: 'system', content: SYSTEM_PROMPT },
                                 { role: 'user', content: prompt },
@@ -202,8 +212,8 @@ Describe the circuit connections in detail, including:
                     });
 
                     try {
-                        const response = await openai.chat.completions.create({
-                            model: 'gpt-4o',
+                        const response = await llmClient.chat.completions.create({
+                            model: getModelName('text', model),
                             messages: [
                                 { role: 'system', content: SYSTEM_PROMPT },
                                 { role: 'user', content: prompt },

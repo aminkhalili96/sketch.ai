@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "enclosure-usb-led",
+      "description": "Compact electronics enclosure with a USB-C port, a small status LED, and mounting posts for a PCB.",
+      "expectedKind": "enclosure",
+      "minElements": 2
+    },
+    {
+      "id": "sensor-node",
+      "description": "Weather sensor node housing with a vented lid, battery compartment, and two external sensors.",
+      "expectedKind": "enclosure",
+      "minElements": 2
+    },
+    {
+      "id": "handheld-remote",
+      "description": "Handheld remote enclosure with three buttons and a small display window.",
+      "expectedKind": "enclosure",
+      "minElements": 2
+    },
+    {
+      "id": "teddy-bear",
+      "description": "A cute teddy bear plush toy with round ears, big eyes, and short arms.",
+      "expectedKind": "object",
+      "minElements": 8
+    },
+    {
+      "id": "robot-toy",
+      "description": "A small robot character toy with a round head, two arms, and short legs.",
+      "expectedKind": "object",
+      "minElements": 6
+    },
+    {
+      "id": "desk-figurine",
+      "description": "A desk figurine of a cat with a rounded body and a small tail.",
+      "expectedKind": "object",
+      "minElements": 5
+    }
+  ]
+}

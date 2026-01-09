@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/stores/projectStore';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Upload, MessageSquare } from 'lucide-react';
+import { PresentationView } from '@/components/PresentationView';
 
 export default function Home() {
   const {
@@ -21,6 +22,7 @@ export default function Home() {
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [presentationMode, setPresentationMode] = useState(false);
   const leftPanelRef = usePanelRef();
   const rightPanelRef = usePanelRef();
 
@@ -78,6 +80,15 @@ export default function Home() {
             )}
 
             <Button
+              onClick={() => setPresentationMode((prev) => !prev)}
+              variant="outline"
+              size="sm"
+              className="text-xs text-muted-foreground hover:text-foreground hover:bg-secondary border-border rounded-full h-7 px-3"
+            >
+              {presentationMode ? 'Exit Presentation' : 'Presentation Mode'}
+            </Button>
+
+            <Button
               onClick={resetProject}
               variant="outline"
               size="sm"
@@ -91,7 +102,10 @@ export default function Home() {
 
       {/* Main Dashboard - Resizable Panels */}
       <div className="flex-1 overflow-hidden">
-        <Group orientation="horizontal" className="h-full w-full">
+        {presentationMode ? (
+          <PresentationView onExit={() => setPresentationMode(false)} />
+        ) : (
+          <Group orientation="horizontal" className="h-full w-full">
 
           {/* LEFT - Upload Sketch */}
           <Panel
@@ -187,6 +201,7 @@ export default function Home() {
           </Panel>
 
         </Group>
+        )}
       </div>
     </main>
   );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode, handleOpenAIError } from '@/lib/openai';
 import { DESCRIPTION_ANALYSIS_PROMPT, SYSTEM_PROMPT, VISION_ANALYSIS_PROMPT } from '@/lib/prompts';
 import { analyzeRequestSchema, analysisResultSchema } from '@/lib/validators';
 import type { AnalyzeResponse, AnalysisResult } from '@/types';
@@ -29,15 +29,50 @@ function explainEmptyChoice(choice: unknown): string {
     return 'AI returned an empty response.';
 }
 
-type OpenAIClient = ReturnType<typeof getOpenAIClient>;
+type OpenAIClient = ReturnType<typeof getLLMClient>;
+
+function extractJsonCandidate(content: string): string[] {
+    const trimmed = content.trim();
+    const candidates = new Set<string>();
+
+    const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenceMatch?.[1]) {
+        candidates.add(fenceMatch[1].trim());
+    }
+
+    if (trimmed) {
+        candidates.add(trimmed);
+    }
+
+    const objStart = trimmed.indexOf('{');
+    const objEnd = trimmed.lastIndexOf('}');
+    if (objStart !== -1 && objEnd !== -1 && objEnd > objStart) {
+        candidates.add(trimmed.slice(objStart, objEnd + 1));
+    }
+
+    return Array.from(candidates);
+}
+
+function tryParseJson(content: string): unknown | null {
+    const candidates = extractJsonCandidate(content);
+    for (const candidate of candidates) {
+        try {
+            return JSON.parse(candidate);
+        } catch {
+            // Try the next candidate.
+        }
+    }
+    return null;
+}
 
 async function analyzeFromDescription(
     openai: OpenAIClient,
-    description: string
+    description: string,
+    preferredModel?: string
 ): Promise<AnalysisResult | null> {
     try {
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+            model: getModelName('text', preferredModel),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 {
@@ -46,13 +81,15 @@ async function analyzeFromDescription(
                 }
             ],
             max_tokens: 1500,
-            response_format: { type: 'json_object' }
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
 
         const content = response.choices?.[0]?.message?.content;
         if (!content) return null;
 
-        const rawAnalysis = JSON.parse(content);
+        const rawAnalysis = tryParseJson(content);
+        if (!rawAnalysis) return null;
         const analysisValidation = analysisResultSchema.safeParse(rawAnalysis);
         if (!analysisValidation.success) return null;
 
@@ -99,11 +136,12 @@ function buildLocalFallback(description?: string): AnalysisResult {
 
 async function buildFallbackAnalysis(
     openai: OpenAIClient,
-    description?: string
+    description?: string,
+    preferredModel?: string
 ): Promise<AnalysisResult> {
     const trimmed = description?.trim() ?? '';
     if (trimmed) {
-        const descriptionOnly = await analyzeFromDescription(openai, trimmed);
+        const descriptionOnly = await analyzeFromDescription(openai, trimmed, preferredModel);
         if (descriptionOnly) return descriptionOnly;
     }
 
@@ -123,9 +161,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { image, description } = validationResult.data;
+        const { image, description, model } = validationResult.data;
 
-        const openai = getOpenAIClient();
+        const openai = getLLMClient();
 
         // Build the prompt with optional description
         let userPrompt = VISION_ANALYSIS_PROMPT;
@@ -134,7 +172,7 @@ export async function POST(request: NextRequest) {
         }
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+            model: getModelName('vision', model),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 {
@@ -152,7 +190,8 @@ export async function POST(request: NextRequest) {
                 },
             ],
             max_tokens: 2000,
-            response_format: { type: 'json_object' },
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } }),
         });
 
         const firstChoice = response.choices?.[0];
@@ -172,16 +211,36 @@ export async function POST(request: NextRequest) {
             } catch {
                 // Ignore logging failures.
             }
-            const fallbackAnalysis = await buildFallbackAnalysis(openai, description);
+            const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model);
             return NextResponse.json<AnalyzeResponse>({
                 success: true,
                 analysis: fallbackAnalysis
             });
         }
 
-        const rawAnalysis = JSON.parse(content);
+        const rawAnalysis = tryParseJson(content);
+        if (!rawAnalysis) {
+            if (isOfflineMode()) {
+                const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model);
+                return NextResponse.json<AnalyzeResponse>({
+                    success: true,
+                    analysis: fallbackAnalysis
+                });
+            }
+            return NextResponse.json<AnalyzeResponse>(
+                { success: false, error: 'Failed to parse AI response' },
+                { status: 500 }
+            );
+        }
         const analysisValidation = analysisResultSchema.safeParse(rawAnalysis);
         if (!analysisValidation.success) {
+            if (isOfflineMode()) {
+                const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model);
+                return NextResponse.json<AnalyzeResponse>({
+                    success: true,
+                    analysis: fallbackAnalysis
+                });
+            }
             return NextResponse.json<AnalyzeResponse>(
                 { success: false, error: 'AI response did not match expected format' },
                 { status: 500 }

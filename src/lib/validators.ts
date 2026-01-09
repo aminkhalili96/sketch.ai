@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const analyzeRequestSchema = z.object({
     image: z.string().min(1, 'Image is required'),
     description: z.string().optional(),
+    model: z.string().optional(),
 });
 
 export const analysisResultSchema = z.object({
@@ -124,6 +125,7 @@ export const generateRequestSchema = z.object({
         z.enum(['bom', 'assembly', 'firmware', 'schematic', 'openscad', 'scene-json'])
     ).min(1, 'At least one output type is required'),
     sketchImage: z.string().optional(), // Base64 image for vision-to-3D pipeline
+    model: z.string().optional(),
 });
 
 // Chat endpoint validation
@@ -149,6 +151,7 @@ export const chatRequestSchema = z.object({
             'scene-json': z.string().optional(),
         }).optional(),
     }).optional(),
+    model: z.string().optional(),
 });
 
 // Export endpoint validation
@@ -173,6 +176,12 @@ export const buildGuideRequestSchema = exportRequestSchema.pick({
     projectName: true,
     outputs: true,
     metadata: true,
+});
+
+export const schematicDiagramRequestSchema = z.object({
+    description: z.string().min(1, 'Description is required'),
+    analysis: analysisResultSchema.optional(),
+    model: z.string().optional(),
 });
 
 // Agents (multi-step, confirm-before-apply)
@@ -242,11 +251,13 @@ export const agentsPlanRequestSchema = z.object({
     message: z.string().min(1, 'Message is required'),
     requestedOutputs: z.array(requestedOutputSchema).min(1, 'Select at least one output to modify'),
     projectContext: agentsProjectContextSchema.optional(),
+    model: z.string().optional(),
 });
 
 export const agentsExecuteRequestSchema = z.object({
     plan: agentPlanSchema,
     projectContext: agentsProjectContextSchema.optional(),
+    model: z.string().optional(),
 });
 
 // Type exports from schemas
@@ -256,6 +267,7 @@ export type GenerateRequest = z.infer<typeof generateRequestSchema>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 export type ExportRequest = z.infer<typeof exportRequestSchema>;
 export type BuildGuideRequest = z.infer<typeof buildGuideRequestSchema>;
+export type SchematicDiagramRequest = z.infer<typeof schematicDiagramRequestSchema>;
 export type AgentsPlanRequest = z.infer<typeof agentsPlanRequestSchema>;
 export type AgentsExecuteRequest = z.infer<typeof agentsExecuteRequestSchema>;
 export type AgentPlan = z.infer<typeof agentPlanSchema>;

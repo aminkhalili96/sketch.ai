@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
 
 // Re-apply mocks needed for both
 vi.mock('@/lib/openai', () => ({
-    getOpenAIClient: () => ({
+    getLLMClient: () => ({
         chat: {
             completions: {
                 create: vi.fn().mockResolvedValue({
@@ -17,6 +17,8 @@ vi.mock('@/lib/openai', () => ({
             }
         }
     }),
+    getModelName: () => 'test-model',
+    isOfflineMode: () => false,
     handleOpenAIError: vi.fn()
 }));
 
@@ -24,7 +26,8 @@ vi.mock('fs/promises', () => ({
     writeFile: vi.fn(),
     readFile: vi.fn().mockResolvedValue(Buffer.from('model-stl-data')),
     unlink: vi.fn().mockResolvedValue(undefined),
-    mkdir: vi.fn()
+    mkdtemp: vi.fn().mockResolvedValue('/tmp/sketch-ai-3d-test'),
+    rm: vi.fn().mockResolvedValue(undefined)
 }));
 
 vi.mock('util', () => ({

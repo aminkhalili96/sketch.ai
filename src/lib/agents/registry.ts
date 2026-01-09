@@ -1,4 +1,3 @@
-import type OpenAI from 'openai';
 import {
     ASSEMBLY_INSTRUCTIONS_PROMPT,
     BOM_GENERATION_PROMPT,
@@ -7,9 +6,16 @@ import {
     OPENSCAD_OBJECT_PROMPT,
     SCENE_GENERATION_PROMPT,
     SCENE_OBJECT_PROMPT,
+    SAFETY_REVIEW_PROMPT,
+    SUSTAINABILITY_ANALYSIS_PROMPT,
+    COST_OPTIMIZATION_PROMPT,
+    DFM_ANALYSIS_PROMPT,
+    MARKETING_GENERATION_PROMPT,
+    PATENT_RISK_PROMPT,
     SYSTEM_PROMPT,
     fillPromptTemplate,
 } from '@/lib/prompts';
+import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
 import { beautifyScene, computeSceneBounds, fallbackScene, normalizeSceneColors, parseSceneElements } from '@/lib/scene';
 import { fallbackOpenSCAD } from '@/lib/openscad';
 import { infer3DKind } from '@/lib/projectKind';
@@ -33,6 +39,7 @@ export function expandRequestedOutputs(requestedOutputs: RequestedOutput[]): Age
         }
         set.add(out);
     }
+    // Always include safety if not explicitly requested? No, optional.
     return Array.from(set);
 }
 
@@ -91,6 +98,12 @@ export function normalizePlanForRequest(plan: AgentPlan, requestedOutputs: Reque
             assembly: 'AssemblyAgent',
             firmware: 'FirmwareAgent',
             schematic: 'SchematicAgent',
+            safety: 'SafetyAgent',
+            sustainability: 'SustainabilityAgent',
+            'cost-optimization': 'CostOptimizerAgent',
+            dfm: 'DFMAgent',
+            marketing: 'MarketingAgent',
+            'patent-risk': 'PatentRiskAgent',
         };
 
         const id = nextId();
@@ -152,8 +165,9 @@ function isNonEmptyString(value: unknown): value is string {
 export async function executeAgentTask(
     task: AgentTask,
     ctx: AgentExecutionContext,
-    openai: OpenAI,
-    shared: { sceneElements?: ReturnType<typeof fallbackScene> }
+    _openai: unknown, // Kept for backward compatibility but now unused
+    shared: { sceneElements?: ReturnType<typeof fallbackScene> },
+    options?: { model?: string }
 ): Promise<AgentExecutionResult> {
     const { components, features } = buildContextStrings(ctx);
     const description =
@@ -182,17 +196,23 @@ export async function executeAgentTask(
             paletteHint,
         ].filter(Boolean).join('\n');
 
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
             ],
             max_tokens: 2000,
-            response_format: { type: 'json_object' },
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } }),
         });
 
-        const content = response.choices[0]?.message?.content;
+        let jsonContent = response.choices[0]?.message?.content;
+        if (jsonContent) {
+            const jsonMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) jsonContent = jsonMatch[1].trim();
+        }
+        const content = jsonContent;
         if (!content) {
             const baseScene = shared.sceneElements ?? fallbackScene(description);
             const scene = normalizeSceneColors(beautifyScene(baseScene, description));
@@ -246,13 +266,14 @@ export async function executeAgentTask(
         ].filter(Boolean).join('\n');
 
         try {
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o',
+            const response = await getLLMClient().chat.completions.create({
+                model: getModelName('text', options?.model),
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
                     { role: 'user', content: prompt },
                 ],
                 max_tokens: 4000,
+                stream: false as const,
             });
 
             const content = response.choices[0]?.message?.content;
@@ -296,13 +317,14 @@ export async function executeAgentTask(
             'Output ONLY the BOM table in Markdown (no extra commentary). Preserve the header and separator row exactly.'
         ].filter(Boolean).join('\n');
 
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
             ],
             max_tokens: 3000,
+            stream: false as const,
         });
 
         const content = response.choices[0]?.message?.content;
@@ -333,13 +355,14 @@ export async function executeAgentTask(
             'Output ONLY the updated assembly instructions in Markdown (no extra commentary).'
         ].filter(Boolean).join('\n');
 
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
             ],
             max_tokens: 3000,
+            stream: false as const,
         });
 
         const content = response.choices[0]?.message?.content;
@@ -368,13 +391,14 @@ export async function executeAgentTask(
             'Output ONLY the firmware code (no markdown).'
         ].filter(Boolean).join('\n');
 
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
             ],
             max_tokens: 4000,
+            stream: false as const,
         });
 
         const content = response.choices[0]?.message?.content;
@@ -402,13 +426,14 @@ export async function executeAgentTask(
             'Output ONLY the schematic description in Markdown (no extra commentary).'
         ].filter(Boolean).join('\n');
 
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt },
             ],
             max_tokens: 2500,
+            stream: false as const,
         });
 
         const content = response.choices[0]?.message?.content;
@@ -416,6 +441,191 @@ export async function executeAgentTask(
             outputType: 'schematic',
             content: content || (isNonEmptyString(current) ? current : ''),
             summary: updateOrRegenerate === 'update' ? 'Updated schematic' : 'Generated schematic',
+        };
+    }
+
+    // =========================================================================
+    // SUSTAINABILITY AGENT
+    // =========================================================================
+    if (task.outputType === 'sustainability') {
+        const bom = ctx.outputs?.bom || 'Not generated';
+        const sceneJson = ctx.outputs?.['scene-json'] || '';
+        const volumeEstimate = sceneJson ? 'Estimated from 3D model' : 'Unable to estimate (no 3D model)';
+
+        const prompt = [
+            fillPromptTemplate(SUSTAINABILITY_ANALYSIS_PROMPT, {
+                description,
+                bom,
+                volumeEstimate,
+            }),
+            '',
+            `User instruction: ${task.instruction}`,
+            '',
+            updateOrRegenerate === 'update' && isNonEmptyString(current)
+                ? `Existing sustainability report (update this):\n\n${current}`
+                : '',
+        ].filter(Boolean).join('\n');
+
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: prompt },
+            ],
+            max_tokens: 2500,
+            stream: false as const,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        return {
+            outputType: 'sustainability',
+            content: content || (isNonEmptyString(current) ? current : ''),
+            summary: updateOrRegenerate === 'update' ? 'Updated sustainability report' : 'Generated sustainability report',
+        };
+    }
+
+    // =========================================================================
+    // COST OPTIMIZATION AGENT
+    // =========================================================================
+    if (task.outputType === 'cost-optimization') {
+        const bom = ctx.outputs?.bom || 'Not generated';
+
+        const prompt = [
+            fillPromptTemplate(COST_OPTIMIZATION_PROMPT, {
+                description,
+                bom,
+            }),
+            '',
+            `User instruction: ${task.instruction}`,
+            '',
+            updateOrRegenerate === 'update' && isNonEmptyString(current)
+                ? `Existing cost optimization report (update this):\n\n${current}`
+                : '',
+        ].filter(Boolean).join('\n');
+
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: prompt },
+            ],
+            max_tokens: 2500,
+            stream: false as const,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        return {
+            outputType: 'cost-optimization',
+            content: content || (isNonEmptyString(current) ? current : ''),
+            summary: updateOrRegenerate === 'update' ? 'Updated cost optimization' : 'Generated cost optimization',
+        };
+    }
+
+    // =========================================================================
+    // DFM (DESIGN FOR MANUFACTURING) AGENT
+    // =========================================================================
+    if (task.outputType === 'dfm') {
+        const sceneJson = ctx.outputs?.['scene-json'] || 'No 3D model available';
+
+        const prompt = [
+            fillPromptTemplate(DFM_ANALYSIS_PROMPT, {
+                description,
+                sceneDescription: sceneJson,
+            }),
+            '',
+            `User instruction: ${task.instruction}`,
+            '',
+            updateOrRegenerate === 'update' && isNonEmptyString(current)
+                ? `Existing DFM analysis (update this):\n\n${current}`
+                : '',
+        ].filter(Boolean).join('\n');
+
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: prompt },
+            ],
+            max_tokens: 2500,
+            stream: false as const,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        return {
+            outputType: 'dfm',
+            content: content || (isNonEmptyString(current) ? current : ''),
+            summary: updateOrRegenerate === 'update' ? 'Updated DFM analysis' : 'Generated DFM analysis',
+        };
+    }
+
+    // =========================================================================
+    // MARKETING AGENT
+    // =========================================================================
+    if (task.outputType === 'marketing') {
+        const prompt = [
+            fillPromptTemplate(MARKETING_GENERATION_PROMPT, {
+                description,
+                features,
+            }),
+            '',
+            `User instruction: ${task.instruction}`,
+            '',
+            updateOrRegenerate === 'update' && isNonEmptyString(current)
+                ? `Existing marketing brief (update this):\n\n${current}`
+                : '',
+        ].filter(Boolean).join('\n');
+
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: prompt },
+            ],
+            max_tokens: 2500,
+            stream: false as const,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        return {
+            outputType: 'marketing',
+            content: content || (isNonEmptyString(current) ? current : ''),
+            summary: updateOrRegenerate === 'update' ? 'Updated marketing brief' : 'Generated marketing brief',
+        };
+    }
+
+    // =========================================================================
+    // PATENT/IP RISK AGENT
+    // =========================================================================
+    if (task.outputType === 'patent-risk') {
+        const prompt = [
+            fillPromptTemplate(PATENT_RISK_PROMPT, {
+                description,
+                components,
+                features,
+            }),
+            '',
+            `User instruction: ${task.instruction}`,
+            '',
+            updateOrRegenerate === 'update' && isNonEmptyString(current)
+                ? `Existing patent risk assessment (update this):\n\n${current}`
+                : '',
+        ].filter(Boolean).join('\n');
+
+        const response = await getLLMClient().chat.completions.create({
+            model: getModelName('text', options?.model),
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: prompt },
+            ],
+            max_tokens: 2500,
+            stream: false as const,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        return {
+            outputType: 'patent-risk',
+            content: content || (isNonEmptyString(current) ? current : ''),
+            summary: updateOrRegenerate === 'update' ? 'Updated patent risk assessment' : 'Generated patent risk assessment',
         };
     }
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Project, Message, AnalysisResult, ProjectOutputs, ProjectMetadata } from '@/types';
+import { DEFAULT_OPENAI_TEXT_MODEL, normalizeModelId } from '@/lib/modelCatalog';
 
 interface ProjectState {
     // Current project
@@ -22,6 +23,9 @@ interface ProjectState {
 
     // Error state
     error: string | null;
+
+    // Model selection (online mode)
+    selectedModel: string;
 
     // Actions
     createProject: (name: string, description: string) => void;
@@ -45,6 +49,7 @@ interface ProjectState {
     // Error handling
     setError: (error: string | null) => void;
     clearError: () => void;
+    setSelectedModel: (model: string) => void;
 
     // Reset
     resetProject: () => void;
@@ -65,8 +70,11 @@ const createMemoryStorage = () => {
 };
 const storage =
     typeof window !== 'undefined'
-        ? createJSONStorage(() => window.localStorage)
+        ? createJSONStorage(() => window.sessionStorage)
         : createJSONStorage(createMemoryStorage);
+
+const normalizeSelectedModel = (value?: string | null) =>
+    normalizeModelId(value) ?? DEFAULT_OPENAI_TEXT_MODEL;
 
 const initialProject: Project = {
     id: generateId(),
@@ -88,6 +96,7 @@ export const useProjectStore = create<ProjectState>()(
             isChatting: false,
             isExporting: false,
             error: null,
+            selectedModel: DEFAULT_OPENAI_TEXT_MODEL,
 
             createProject: (name, description) => {
                 set({
@@ -246,6 +255,7 @@ export const useProjectStore = create<ProjectState>()(
 
             setError: (error) => set({ error }),
             clearError: () => set({ error: null }),
+            setSelectedModel: (model) => set({ selectedModel: normalizeSelectedModel(model) }),
 
             resetProject: () => {
                 set({
@@ -268,8 +278,18 @@ export const useProjectStore = create<ProjectState>()(
             name: 'sketch-ai-project',
             storage,
             partialize: (state) => ({
-                currentProject: state.currentProject,
+                currentProject: state.currentProject
+                    ? { ...state.currentProject, sketchBase64: undefined }
+                    : null,
+                selectedModel: state.selectedModel,
             }),
+            onRehydrateStorage: () => (state) => {
+                if (!state) return;
+                const normalized = normalizeSelectedModel(state.selectedModel);
+                if (normalized !== state.selectedModel) {
+                    state.setSelectedModel(normalized);
+                }
+            },
         }
     )
 );

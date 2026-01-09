@@ -21,6 +21,8 @@ interface SceneRendererProps {
     sceneJson: string;
     exploded?: boolean;
     explodeAmount?: number;
+    mode?: 'default' | 'presentation';
+    height?: number;
 }
 
 function SceneObject({ element }: { element: SceneElement }) {
@@ -104,11 +106,23 @@ function SceneObject({ element }: { element: SceneElement }) {
     );
 }
 
-export function SceneRenderer({ sceneJson, exploded = false, explodeAmount = 0.35 }: SceneRendererProps) {
+export function SceneRenderer({
+    sceneJson,
+    exploded = false,
+    explodeAmount = 0.35,
+    mode = 'default',
+    height,
+}: SceneRendererProps) {
     const parsed = useMemo(() => parseSceneElements(sceneJson), [sceneJson]);
     const elements = useMemo(
-        () => (parsed ? (normalizeSceneColors(beautifyScene(parsed)) as SceneElement[]) : []),
-        [parsed]
+        () => {
+            if (!parsed) return [];
+            if (mode === 'presentation') {
+                return parsed as SceneElement[];
+            }
+            return normalizeSceneColors(beautifyScene(parsed)) as SceneElement[];
+        },
+        [parsed, mode]
     );
 
     const explodedElements = useMemo(() => {
@@ -163,17 +177,27 @@ export function SceneRenderer({ sceneJson, exploded = false, explodeAmount = 0.3
         );
     }
 
+    const backgroundClass =
+        mode === 'presentation'
+            ? 'from-neutral-50 via-neutral-100 to-neutral-200'
+            : 'from-neutral-50 to-neutral-200';
+    const stagePreset = mode === 'presentation' ? 'rembrandt' : 'soft';
+    const stageIntensity = mode === 'presentation' ? 1.05 : 0.9;
+
     return (
-        <div className="w-full h-[420px] bg-gradient-to-br from-neutral-50 to-neutral-200 rounded-xl overflow-hidden relative border border-neutral-200">
+        <div
+            className={`w-full h-[420px] bg-gradient-to-br ${backgroundClass} rounded-xl overflow-hidden relative border border-neutral-200`}
+            style={height ? { height: `${height}px` } : undefined}
+        >
             <Canvas shadows dpr={[1, 2]} camera={{ fov: 45 }}>
                 <Stage
                     environment="studio"
-                    preset="soft"
-                    intensity={0.9}
+                    preset={stagePreset}
+                    intensity={stageIntensity}
                     adjustCamera
                     shadows={{
                         type: 'contact',
-                        opacity: 0.35,
+                        opacity: mode === 'presentation' ? 0.45 : 0.35,
                         blur: 2.5,
                         far: 200,
                     }}

@@ -1,5 +1,5 @@
 // Critic Agent - Validates generated scene against original input
-import { getOpenAIClient } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { VisionAnalysis } from './visionAnalyzer';
 import type { StructurePlan } from './structurePlanner';
@@ -65,23 +65,26 @@ Output ONLY valid JSON.`;
 
 export async function critiqueScene(
     visionAnalysis: VisionAnalysis,
-    scene: StructurePlan['elements']
+    scene: StructurePlan['elements'],
+    preferredModel?: string
 ): Promise<CritiqueResult> {
-    const openai = getOpenAIClient();
+    const llmClient = getLLMClient();
+    const modelName = getModelName('text', preferredModel);
 
     const prompt = CRITIC_PROMPT
         .replace('{visionAnalysis}', JSON.stringify(visionAnalysis, null, 2))
         .replace('{scene}', JSON.stringify(scene, null, 2));
 
     try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await llmClient.chat.completions.create({
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 1500,
-            response_format: { type: 'json_object' }
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
 
         const content = response.choices[0]?.message?.content;
@@ -89,7 +92,14 @@ export async function critiqueScene(
             throw new Error('No response from critic');
         }
 
-        const critique = JSON.parse(content) as CritiqueResult;
+        // Parse JSON (handle markdown code blocks for local models)
+        let jsonContent = content;
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+            jsonContent = jsonMatch[1].trim();
+        }
+
+        const critique = JSON.parse(jsonContent) as CritiqueResult;
 
         return {
             score: typeof critique.score === 'number' ? critique.score : 5,

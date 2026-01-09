@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError } from '@/lib/openai';
 import { SYSTEM_PROMPT, CHAT_REFINEMENT_PROMPT, fillPromptTemplate } from '@/lib/prompts';
 import { chatRequestSchema } from '@/lib/validators';
 import type { ChatResponse } from '@/types';
@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { message, history, projectContext } = validationResult.data;
+        const { message, history, projectContext, model } = validationResult.data;
 
-        const openai = getOpenAIClient();
+        const openai = getLLMClient();
 
         // Build context-aware prompt
         const contextPrompt = fillPromptTemplate(CHAT_REFINEMENT_PROMPT, {
@@ -68,9 +68,10 @@ export async function POST(request: NextRequest) {
         messages.push({ role: 'user', content: message });
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+            model: getModelName('text', model),
             messages,
             max_tokens: 2000,
+            stream: false as const,
         });
 
         const firstChoice = response.choices?.[0];

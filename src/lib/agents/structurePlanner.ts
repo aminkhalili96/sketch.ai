@@ -1,5 +1,5 @@
 // Structure Planner Agent - Plans 3D structure based on vision analysis
-import { getOpenAIClient } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { VisionAnalysis } from './visionAnalyzer';
 
@@ -78,23 +78,26 @@ Output ONLY valid JSON.`;
 
 export async function planStructure(
     visionAnalysis: VisionAnalysis,
-    description: string
+    description: string,
+    preferredModel?: string
 ): Promise<StructurePlan> {
-    const openai = getOpenAIClient();
+    const llmClient = getLLMClient();
+    const modelName = getModelName('text', preferredModel);
 
     const prompt = STRUCTURE_PLANNER_PROMPT
         .replace('{visionAnalysis}', JSON.stringify(visionAnalysis, null, 2))
         .replace('{description}', description);
 
     try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await llmClient.chat.completions.create({
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 2500,
-            response_format: { type: 'json_object' }
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
 
         const content = response.choices[0]?.message?.content;
@@ -102,7 +105,14 @@ export async function planStructure(
             throw new Error('No response from structure planner');
         }
 
-        const plan = JSON.parse(content) as StructurePlan;
+        // Parse JSON (handle markdown code blocks for local models)
+        let jsonContent = content;
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+            jsonContent = jsonMatch[1].trim();
+        }
+
+        const plan = JSON.parse(jsonContent) as StructurePlan;
 
         // Validate elements
         if (!Array.isArray(plan.elements) || plan.elements.length === 0) {

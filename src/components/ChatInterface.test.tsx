@@ -35,6 +35,8 @@ describe('ChatInterface', () => {
             undoLastSnapshot: vi.fn(),
             outputSnapshots: [],
             replaceOutputs: vi.fn(),
+            selectedModel: 'gpt-5.2',
+            setSelectedModel: vi.fn(),
         } as unknown as ReturnType<typeof projectStore.useProjectStore>);
     });
 

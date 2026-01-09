@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ModelSelector } from '@/components/ModelSelector';
 import { useProjectStore } from '@/stores/projectStore';
 import type { AgentPlan, RequestedOutput, AnalysisResult, ProjectOutputs } from '@/types';
 
@@ -26,6 +27,7 @@ export function ChatInterface() {
         undoLastSnapshot,
         outputSnapshots,
         replaceOutputs,
+        selectedModel,
     } = useProjectStore();
     const canUndo = outputSnapshots.length > 0;
 
@@ -55,6 +57,7 @@ export function ChatInterface() {
             analysis?: AnalysisResult;
             outputs?: ProjectOutputs;
         };
+        model?: string;
     }) => {
         const response = await fetch('/api/chat/stream', {
             method: 'POST',
@@ -143,6 +146,7 @@ export function ChatInterface() {
                             outputs: currentProject?.outputs,
                             metadata: currentProject?.metadata,
                         },
+                        model: selectedModel,
                     }),
                 });
 
@@ -166,6 +170,7 @@ export function ChatInterface() {
                         analysis: currentProject?.analysis,
                         outputs: currentProject?.outputs,
                     },
+                    model: selectedModel,
                 };
 
                 const streamed = await streamChatResponse(payload);
@@ -215,6 +220,7 @@ export function ChatInterface() {
                         outputs: currentProject?.outputs,
                         metadata: currentProject?.metadata,
                     },
+                    model: selectedModel,
                 }),
             });
 
@@ -284,7 +290,7 @@ export function ChatInterface() {
         );
 
     return (
-        <Card className="flex flex-col h-full bg-white border border-neutral-200 rounded-2xl shadow-sm">
+        <Card id="design-assistant" className="flex flex-col h-full bg-white border border-neutral-200 rounded-2xl shadow-sm">
             <div className="p-4 border-b border-neutral-100">
                 <h2 className="text-lg font-medium text-neutral-900">
                     Design Assistant
@@ -468,6 +474,7 @@ export function ChatInterface() {
                         </Button>
                     )}
                 </div>
+                <ModelSelector compact className="mb-3" />
                 <div className="flex gap-2">
                     <Input
                         value={input}

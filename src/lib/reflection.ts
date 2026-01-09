@@ -1,7 +1,7 @@
 // 3D Scene Reflection and Validation
 // This module provides LLM-based self-critique for generated 3D scenes
 
-import { getOpenAIClient } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { z } from 'zod';
 import type { sceneSchema } from '@/lib/validators';
@@ -163,7 +163,7 @@ export async function llmJudgeScene(
     description: string,
     analysisContext?: string
 ): Promise<ReflectionResult> {
-    const openai = getOpenAIClient();
+    const llmClient = getLLMClient();
 
     const prompt = SCENE_JUDGE_PROMPT
         .replace('{description}', description)
@@ -171,22 +171,25 @@ export async function llmJudgeScene(
         .replace('{scene}', JSON.stringify(elements, null, 2));
 
     try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await llmClient.chat.completions.create({
+            model: getModelName('text'),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 1000,
-            response_format: { type: 'json_object' }
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
 
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
+        let jsonContent = response.choices[0]?.message?.content;
+        if (!jsonContent) {
             throw new Error('No response from judge');
         }
+        const jsonMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) jsonContent = jsonMatch[1].trim();
 
-        const result = JSON.parse(content) as ReflectionResult;
+        const result = JSON.parse(jsonContent) as ReflectionResult;
         return {
             isValid: result.isValid ?? result.score >= 7,
             issues: result.issues || [],
@@ -208,7 +211,7 @@ export async function llmFixScene(
     description: string,
     reflection: ReflectionResult
 ): Promise<ReflectionFixResult> {
-    const openai = getOpenAIClient();
+    const llmClient = getLLMClient();
 
     const prompt = SCENE_FIX_PROMPT
         .replace('{description}', description)
@@ -217,22 +220,25 @@ export async function llmFixScene(
         .replace('{missingParts}', reflection.missingParts.join(', ') || 'None');
 
     try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await llmClient.chat.completions.create({
+            model: getModelName('text'),
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 2000,
-            response_format: { type: 'json_object' }
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
 
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
+        let jsonContent = response.choices[0]?.message?.content;
+        if (!jsonContent) {
             throw new Error('No response from fixer');
         }
+        const jsonMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) jsonContent = jsonMatch[1].trim();
 
-        const parsed = JSON.parse(content);
+        const parsed = JSON.parse(jsonContent);
         const fixedElements = Array.isArray(parsed) ? parsed : parsed.elements;
 
         if (!Array.isArray(fixedElements)) {

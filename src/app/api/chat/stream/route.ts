@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getOpenAIClient, handleOpenAIError } from '@/lib/openai';
+import { getLLMClient, getModelName, handleOpenAIError } from '@/lib/openai';
 import { SYSTEM_PROMPT, CHAT_REFINEMENT_PROMPT, fillPromptTemplate } from '@/lib/prompts';
 import { chatRequestSchema } from '@/lib/validators';
 
@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
                     return;
                 }
 
-                const { message, history, projectContext } = validationResult.data;
-                const openai = getOpenAIClient();
+                const { message, history, projectContext, model } = validationResult.data;
+                const llmClient = getLLMClient();
 
                 const contextPrompt = fillPromptTemplate(CHAT_REFINEMENT_PROMPT, {
                     description: projectContext?.description || 'No project description provided',
@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
 
                 messages.push({ role: 'user', content: message });
 
-                const response = await openai.chat.completions.create({
-                    model: 'gpt-4o',
+                const response = await llmClient.chat.completions.create({
+                    model: getModelName('text', model),
                     messages,
                     max_tokens: 2000,
                     stream: true,

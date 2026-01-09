@@ -1,5 +1,5 @@
 // Refiner Agent - Fixes issues identified by the Critic
-import { getOpenAIClient } from '@/lib/openai';
+import { getLLMClient, getModelName, isOfflineMode } from '@/lib/openai';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import type { VisionAnalysis } from './visionAnalyzer';
 import type { StructurePlan } from './structurePlanner';
@@ -45,9 +45,11 @@ Output ONLY valid JSON with all elements.`;
 export async function refineScene(
     visionAnalysis: VisionAnalysis,
     scene: StructurePlan['elements'],
-    critique: CritiqueResult
+    critique: CritiqueResult,
+    preferredModel?: string
 ): Promise<RefinementResult> {
-    const openai = getOpenAIClient();
+    const llmClient = getLLMClient();
+    const modelName = getModelName('text', preferredModel);
 
     const prompt = REFINER_PROMPT
         .replace('{visionAnalysis}', JSON.stringify(visionAnalysis, null, 2))
@@ -62,14 +64,15 @@ export async function refineScene(
         }, null, 2));
 
     try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const response = await llmClient.chat.completions.create({
+            model: modelName,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 3000,
-            response_format: { type: 'json_object' }
+            stream: false as const,
+            ...(isOfflineMode() ? {} : { response_format: { type: 'json_object' as const } })
         });
 
         const content = response.choices[0]?.message?.content;
@@ -77,7 +80,14 @@ export async function refineScene(
             throw new Error('No response from refiner');
         }
 
-        const result = JSON.parse(content);
+        // Parse JSON (handle markdown code blocks for local models)
+        let jsonContent = content;
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+            jsonContent = jsonMatch[1].trim();
+        }
+
+        const result = JSON.parse(jsonContent);
         const elements = Array.isArray(result.elements) ? result.elements : result;
 
         if (!Array.isArray(elements) || elements.length === 0) {

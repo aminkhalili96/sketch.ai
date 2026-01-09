@@ -1,0 +1,32 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# 1. Prevent .env files (except .env.example)
+if git diff --cached --name-only | grep -E "^\.env(?!.example$)" > /dev/null; then
+  echo "❌ SECURITY CHECKS FAILED"
+  echo "   You are trying to commit a .env file."
+  echo "   Use .env.example for templates."
+  exit 1
+fi
+
+# 2. Prevent sensitive docs
+if git diff --cached --name-only | grep -E "^docs/INTERVIEW\.md|^docs/private/" > /dev/null; then
+  echo "❌ SECURITY CHECKS FAILED"
+  echo "   You are trying to commit sensitive documentation."
+  echo "   docs/INTERVIEW.md and docs/private/* are strictly local."
+  exit 1
+fi
+
+# 3. Optional: Prevent API keys in code (simple grep)
+# Scans for "sk-..." patterns in staged files
+if git diff --cached --name-only | xargs grep -E "sk-[a-zA-Z0-9]{48}" > /dev/null 2>&1; then
+  echo "⚠️  POSSIBLE API KEY DETECTED"
+  echo "   It looks like you might have an OpenAI key in your code."
+  echo "   Please check your staged files."
+  # Uncomment the next line to strictly block it
+  # exit 1
+fi
+
+# 4. Optional: Run Lint/Types (commented out for speed, enable if strict)
+# npm run lint
+# npx tsc --noEmit

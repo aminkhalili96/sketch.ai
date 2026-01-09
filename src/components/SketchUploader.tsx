@@ -7,7 +7,9 @@ import NextImage from 'next/image';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ModelSelector } from '@/components/ModelSelector';
 import { useProjectStore } from '@/stores/projectStore';
+import { demoSketches, type DemoSketch } from '@/lib/demoGallery';
 
 interface SketchUploaderProps {
     onAnalyze?: () => void;
@@ -27,7 +29,8 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
         clearOutputSnapshots,
         setAnalyzing,
         isAnalyzing,
-        setError
+        setError,
+        selectedModel
     } = useProjectStore();
 
     useEffect(() => {
@@ -129,6 +132,7 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
                 body: JSON.stringify({
                     image: preview,
                     description: description || undefined,
+                    model: selectedModel,
                 }),
             });
 
@@ -159,6 +163,27 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
         const value = event.target.value;
         setDescription(value);
         updateDescription(value);
+    };
+
+    const loadDemoSketch = async (demo: DemoSketch) => {
+        resetGeneratedData();
+        try {
+            const response = await fetch(demo.imageUrl);
+            if (!response.ok) {
+                throw new Error('Demo image fetch failed');
+            }
+            const svgText = await response.text();
+            const base64 = window.btoa(svgText);
+            const dataUrl = `data:image/svg+xml;base64,${base64}`;
+
+            setPreview(dataUrl);
+            setSketch(dataUrl);
+            setDescription(demo.prompt);
+            updateDescription(demo.prompt);
+        } catch (error) {
+            console.error('Failed to load demo sketch', error);
+            setError('Failed to load demo sketch');
+        }
     };
 
     return (
@@ -205,6 +230,34 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
                                 </div>
                             </div>
                         </div>
+
+                        <div className="mt-5">
+                            <p className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
+                                Try a demo sketch
+                            </p>
+                            <div className="space-y-2">
+                                {demoSketches.map((demo) => (
+                                    <button
+                                        key={demo.id}
+                                        type="button"
+                                        onClick={() => loadDemoSketch(demo)}
+                                        className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 hover:bg-white transition-colors p-2 text-left"
+                                    >
+                                        <div className="h-12 w-12 rounded-lg border border-neutral-200 bg-neutral-50 flex items-center justify-center">
+                                            <img
+                                                src={demo.imageUrl}
+                                                alt={demo.title}
+                                                className="h-10 w-10 object-contain"
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-neutral-800">{demo.title}</p>
+                                            <p className="text-xs text-neutral-500">{demo.description}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </motion.div>
                 ) : (
                     <motion.div
@@ -240,6 +293,8 @@ export function SketchUploader({ onAnalyze }: SketchUploaderProps) {
                             className="bg-neutral-50 border-neutral-200 text-neutral-900 placeholder:text-neutral-400 resize-none rounded-xl"
                             rows={2}
                         />
+
+                        <ModelSelector compact />
 
                         {currentProject?.analysis && (
                             <div className="p-3 rounded-xl bg-green-50 border border-green-200">
