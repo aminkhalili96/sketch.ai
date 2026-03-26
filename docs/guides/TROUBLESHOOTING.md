@@ -82,6 +82,17 @@
 
 ---
 
+### Photoreal Render Failed
+
+**Cause:** CadQuery or Blender not installed, or missing environment paths.
+
+**Solutions:**
+1. Install CadQuery (Python) and ensure `CADQUERY_PYTHON` points to the Python executable.
+2. Install Blender and ensure `BLENDER_PATH` points to the Blender binary (or `blender` is on PATH).
+3. Retry the render from the 3D tab.
+
+---
+
 ### Tests Failing
 
 **Common causes:**

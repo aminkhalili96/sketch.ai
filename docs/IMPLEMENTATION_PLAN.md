@@ -32,9 +32,9 @@ npx shadcn-ui@latest add button card input textarea tabs dialog
 
 #### 1.2 Project Structure
 - [ ] Create folder structure as defined in TECH_SPEC.md
-- [ ] Set up environment variables (.env.local)
-- [ ] Configure OpenAI client in `lib/openai.ts`
-- [ ] Create TypeScript types in `types/index.ts`
+- [ ] Set up environment variables (.env)
+- [ ] Configure OpenAI client in `src/backend/ai/openai.ts`
+- [ ] Create TypeScript types in `src/shared/types/index.ts`
 
 #### 1.3 Base UI Components
 - [ ] Create root layout with header/navigation
@@ -53,7 +53,7 @@ npx shadcn-ui@latest add button card input textarea tabs dialog
 ## Phase 2: Core AI Features (Days 4-7)
 
 ### Goals
-- Implement sketch analysis with GPT-4 Vision
+- Implement sketch analysis with a vision-capable model (default: gpt-4o)
 - Implement output generation (BOM, Assembly, Firmware)
 - Create conversational refinement flow
 
@@ -66,7 +66,7 @@ npx shadcn-ui@latest add button card input textarea tabs dialog
 - [ ] Add Zod validation for all requests
 
 #### 2.2 Prompt Engineering
-- [ ] Create `lib/prompts.ts` with all prompt templates
+- [ ] Create `src/backend/ai/prompts.ts` with all prompt templates
 - [ ] System prompt for hardware expertise
 - [ ] BOM generation prompt
 - [ ] Assembly instructions prompt
@@ -76,7 +76,7 @@ npx shadcn-ui@latest add button card input textarea tabs dialog
 #### 2.3 State Management
 - [ ] Create Zustand store for project state
 - [ ] Track: project data, messages, outputs, loading states
-- [ ] Persist state to localStorage
+- [ ] Persist state to sessionStorage
 
 #### 2.4 UI Integration
 - [ ] Connect SketchUploader to /api/analyze
@@ -201,7 +201,7 @@ npx shadcn-ui@latest add button card input textarea tabs dialog
 - [ ] Production environment variables set
 - [ ] Database migrations applied
 - [ ] Error monitoring (Sentry) configured
-- [ ] Analytics (Vercel Analytics) enabled
+- [ ] Analytics enabled (provider TBD)
 - [ ] OpenAI usage alerts set
 - [ ] README and documentation complete
 - [ ] Demo video recorded

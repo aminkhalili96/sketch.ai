@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, recordChatError } from '@/lib/openai';
-import { agentsExecuteRequestSchema } from '@/lib/validators';
-import { executeAgentTask, expandRequestedOutputs } from '@/lib/agents/registry';
-import { fallbackScene, normalizeSceneColors, parseSceneElements } from '@/lib/scene';
-import { buildProjectDescription } from '@/lib/projectDescription';
-import type { AgentsExecuteResponse, ProjectOutputs } from '@/types';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
-import { trackAgentExecution } from '@/lib/metrics';
+import { getLLMClient, getModelName, handleOpenAIError, recordChatError } from '@/backend/ai/openai';
+import { agentsExecuteRequestSchema } from '@/shared/schemas/validators';
+import { executeAgentTask, expandRequestedOutputs } from '@/backend/agents/registry';
+import { fallbackScene, normalizeSceneColors, parseSceneElements } from '@/shared/domain/scene';
+import { buildProjectDescription } from '@/shared/domain/projectDescription';
+import type { AgentsExecuteResponse, ProjectOutputs } from '@/shared/types';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
+import { trackAgentExecution } from '@/backend/infra/metrics';
 
 export async function POST(request: NextRequest) {
     const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.ai);
@@ -162,6 +162,9 @@ export async function POST(request: NextRequest) {
                 const settled = batch[i];
                 if (settled.status === 'fulfilled') {
                     results.push(settled.value);
+                } else {
+                    // Log rejected promises so failures are not silently dropped
+                    console.error(`Agent task ${id} rejected:`, settled.reason);
                 }
                 completed.add(id);
                 remaining.delete(id);

@@ -2,25 +2,26 @@
 
 > Transform hardware sketches into manufacturable 3D designs with AI
 
-🔗 **[Live Demo](https://bit.ly/sketch_ai)** | **[Try it now →](https://sketch-ai-6kexzh25rq-uc.a.run.app)**
+**[Live Demo](https://bit.ly/sketch_ai)** | **[Try it now](https://sketch-ai-6kexzh25rq-uc.a.run.app)**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 
 
-## ✨ Features
+## Features
 
 - **Sketch-to-3D**: Upload a sketch, get a production-ready 3D model
-- **18-Agent AI System**: Specialized agents for every aspect of product development
-- **Vision Analysis**: GPT-5.2 Vision extracts parts directly from images
+- **18-Agent System**: Specialized agents for every aspect of product development
+- **Vision Analysis**: GPT-4o (vision-capable model) extracts parts directly from images
 - **Self-Correction**: Critic + Refiner agents fix errors automatically
 - **Visual Polish Loop**: Automatically refines 3D model appearance until professional
 - **Full Engineering Suite**: BOM, Assembly, Firmware, Schematic, OpenSCAD
+- **Photoreal CAD Render**: CadQuery + Blender pipeline for high-quality product images
 - **Quality Assurance**: Safety, DFM, Sustainability analysis
 - **Business Intelligence**: Cost Optimization, Marketing, Patent Risk
 
-## 🤖 Multi-Agent System (18 Agents)
+## Multi-Agent System (18 Agents)
 
 | Category | Agents |
 |----------|--------|
@@ -30,7 +31,7 @@
 | **Quality & Safety** | Safety Compliance, DFM Analysis, Sustainability |
 | **Business** | Cost Optimizer, Marketing, Patent Risk |
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Install dependencies
@@ -46,7 +47,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 [Sketch] → Vision Agent → Structure Planner → Critic → Refiner → [3D Model]
@@ -54,32 +55,33 @@ Open [http://localhost:3000](http://localhost:3000)
      [Safety] [DFM] [Sustainability] [Cost] [Marketing] [Patent]
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+See [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for details.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
-├── app/                 # Next.js app router
-│   └── api/            # API routes
-│       ├── analyze/    # Sketch analysis
-│       ├── generate/   # Output generation
-│       ├── health/     # Health check endpoint
-│       └── agents/     # Agent endpoints
-├── components/         # React components
-├── lib/
-│   ├── agents/         # Multi-agent system (18 agents)
-│   ├── logger.ts       # Structured logging
-│   ├── rateLimit.ts    # Rate limiting
-│   ├── tokenTracker.ts # OpenAI cost tracking
-│   ├── metrics.ts      # Performance metrics
-│   └── prompts.ts      # LLM prompts
-├── middleware.ts       # Security & rate limiting
-├── stores/             # Zustand stores
-└── types/              # TypeScript types
+├── app/                 # Next.js routing (thin layer)
+│   └── api/            # API routes (delegate to backend)
+├── frontend/            # Client UI + state
+│   ├── components/      # UI + feature components
+│   ├── lib/             # UI helpers and demo data
+│   └── state/           # Zustand stores
+├── backend/             # Server-side logic
+│   ├── agents/          # Multi-agent system (18 agents)
+│   ├── ai/              # OpenAI client + prompts
+│   ├── infra/           # Logging, rate limiting, metrics
+│   ├── pipeline/        # 3D/OpenSCAD/SVG generation
+│   └── services/        # External API clients
+├── shared/              # Cross-cutting types + domain helpers
+│   ├── ai/              # Model catalog
+│   ├── domain/          # Scene/BOM/project helpers
+│   ├── schemas/         # Zod validators
+│   └── types/           # TypeScript types
+└── middleware.ts        # Security & request middleware
 ```
 
-## 📖 Documentation
+## Documentation
 
 | Category | Document | Description |
 |----------|----------|-------------|
@@ -93,9 +95,9 @@ src/
 | | [Evaluation](docs/guides/EVALUATION.md) | Testing & accuracy metrics |
 | **Reference** | [API Reference](docs/API.md) | REST API endpoints |
 
-> 🔒 **Private Notes**: Personal interview notes are stored in `docs/private/` (git-ignored).
+> **Private Notes**: Personal interview notes are stored in `docs/private/` (git-ignored).
 
-## 🛡️ Production Features
+## Production Features
 
 - **Health Checks**: `/api/health` for Kubernetes probes
 - **Rate Limiting**: Protect API from abuse (100/min general, 10/min AI)
@@ -104,23 +106,36 @@ src/
 - **Metrics**: Prometheus-compatible performance tracking
 - **Security Headers**: XSS protection, CORS, content security
 
-## 🧪 Testing
+## Testing
 
 ```bash
 npm test        # Run tests
 npm run lint    # Lint code
 ```
 
-## 🛠️ Tech Stack
+## Optional CAD + Render Setup
 
-- **Framework**: Next.js 14 (App Router)
+The photoreal render pipeline uses CadQuery (CAD) and Blender (Cycles).
+
+1. Install CadQuery and ensure `python3` can import it (or set `CADQUERY_PYTHON`).
+2. Install Blender and set `BLENDER_PATH` if `blender` is not on PATH.
+
+Environment variables:
+```bash
+export CADQUERY_PYTHON=python3
+export BLENDER_PATH=/Applications/Blender.app/Contents/MacOS/Blender
+```
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **State**: Zustand
-- **AI**: OpenAI GPT-5.2, GPT-4 Vision
+- **AI**: OpenAI GPT-5.2, GPT-4o (vision-capable)
 - **3D**: Three.js, React Three Fiber
 - **Validation**: Zod
 
-## 📝 License
+## License
 
 MIT License - see [LICENSE](LICENSE) for details.

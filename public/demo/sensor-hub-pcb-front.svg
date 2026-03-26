@@ -1,0 +1,71 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="shPcbFront" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#3E9B5A"/>
+      <stop offset="100%" stop-color="#2E7A48"/>
+    </radialGradient>
+  </defs>
+  <rect width="220" height="220" fill="white"/>
+  <!-- Round PCB -->
+  <circle cx="110" cy="110" r="96" fill="url(#shPcbFront)" stroke="#1F5A34" stroke-width="6"/>
+  <circle cx="110" cy="110" r="84" fill="none" stroke="#5BC07A" stroke-width="2"/>
+
+  <!-- ESP32-C6 (large QFN center) -->
+  <rect x="78" y="82" width="52" height="52" rx="5" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="2"/>
+  <rect x="86" y="88" width="36" height="22" rx="3" fill="#C9B28A"/>
+  <rect x="86" y="114" width="36" height="12" rx="2" fill="#BFA57B"/>
+  <text x="104" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="5.5" fill="#1F5A34">ESP32-C6</text>
+
+  <!-- USB-C connector -->
+  <rect x="86" y="168" width="48" height="14" rx="4" fill="#B08D63" stroke="#896A44" stroke-width="2"/>
+  <rect x="92" y="171" width="36" height="8" rx="3" fill="#7A5C3B"/>
+
+  <!-- OLED FFC connector (thin rect) -->
+  <rect x="54" y="56" width="48" height="10" rx="2" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1.5"/>
+  <text x="78" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#1F5A34">OLED FFC</text>
+
+  <!-- Board-to-board header (2x5 pin rect) -->
+  <rect x="130" y="56" width="30" height="36" rx="2" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <!-- 2x5 pin grid -->
+  <circle cx="138" cy="62" r="2" fill="#A38B66"/>
+  <circle cx="152" cy="62" r="2" fill="#A38B66"/>
+  <circle cx="138" cy="68" r="2" fill="#A38B66"/>
+  <circle cx="152" cy="68" r="2" fill="#A38B66"/>
+  <circle cx="138" cy="74" r="2" fill="#A38B66"/>
+  <circle cx="152" cy="74" r="2" fill="#A38B66"/>
+  <circle cx="138" cy="80" r="1.5" fill="#A38B66"/>
+  <circle cx="152" cy="80" r="1.5" fill="#A38B66"/>
+  <circle cx="138" cy="86" r="1.5" fill="#A38B66"/>
+  <circle cx="152" cy="86" r="1.5" fill="#A38B66"/>
+  <text x="145" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#1F5A34">B2B HDR</text>
+
+  <!-- Flash memory -->
+  <rect x="48" y="100" width="22" height="16" rx="2" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1.5"/>
+  <text x="59" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="4.5" fill="#1F5A34">FLASH</text>
+
+  <!-- 10 passives -->
+  <rect x="50" y="78" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="50" y="86" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="134" y="100" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="134" y="108" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="134" y="116" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="82" y="148" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="94" y="148" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="106" y="148" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="118" y="148" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="64" y="124" width="4" height="8" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+
+  <!-- Traces -->
+  <line x1="78" y1="108" x2="70" y2="108" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="102" y1="61" x2="104" y2="82" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="130" y1="96" x2="134" y2="102" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="130" y1="108" x2="134" y2="108" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="110" y1="134" x2="110" y2="148" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="110" y1="152" x2="110" y2="168" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="130" y1="70" x2="130" y2="82" stroke="#89CFA2" stroke-width="2"/>
+
+  <!-- Mounting hole -->
+  <circle cx="110" cy="26" r="5" fill="#EFE8D8" stroke="#D9CDBA" stroke-width="2"/>
+
+  <text x="110" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#1F5A34">MAIN PCB</text>
+</svg>

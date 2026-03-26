@@ -1,0 +1,62 @@
+{
+  "summary": {
+    "runAt": "2026-01-10T08:58:27.134Z",
+    "baseUrl": "http://localhost:3000",
+    "offlineMode": false,
+    "models": {
+      "vision": "llava:7b",
+      "text": "qwen2.5:7b"
+    },
+    "totalCases": 6,
+    "successRate": 0,
+    "sceneValidityRate": 0,
+    "kindAccuracy": 0,
+    "elementCountRate": 0,
+    "bomValidityRate": 0,
+    "avgLatencyMs": 24.333333333333332
+  },
+  "results": [
+    {
+      "id": "enclosure-usb-led",
+      "description": "Compact electronics enclosure with a USB-C port, a small status LED, and mounting posts for a PCB.",
+      "success": false,
+      "error": "API error",
+      "latencyMs": 140
+    },
+    {
+      "id": "sensor-node",
+      "description": "Weather sensor node housing with a vented lid, battery compartment, and two external sensors.",
+      "success": false,
+      "error": "API error",
+      "latencyMs": 2
+    },
+    {
+      "id": "handheld-remote",
+      "description": "Handheld remote enclosure with three buttons and a small display window.",
+      "success": false,
+      "error": "API error",
+      "latencyMs": 1
+    },
+    {
+      "id": "teddy-bear",
+      "description": "A cute teddy bear plush toy with round ears, big eyes, and short arms.",
+      "success": false,
+      "error": "API error",
+      "latencyMs": 1
+    },
+    {
+      "id": "robot-toy",
+      "description": "A small robot character toy with a round head, two arms, and short legs.",
+      "success": false,
+      "error": "API error",
+      "latencyMs": 1
+    },
+    {
+      "id": "desk-figurine",
+      "description": "A desk figurine of a cat with a rounded body and a small tail.",
+      "success": false,
+      "error": "API error",
+      "latencyMs": 1
+    }
+  ]
+}

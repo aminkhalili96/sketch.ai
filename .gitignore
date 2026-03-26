@@ -47,3 +47,18 @@ docs/private/
 # local experiments
 k8s/
 key.json
+
+# Claude Code local data
+.claude/
+
+# temp/scratch files
+.tmp/
+capture_variants.js
+generate_voxels.js
+codexv1*
+scripts/visual-match/
+src/frontend/lib/voxelData.ts
+
+# personal reference images
+public/demo/user-reference.png
+public/demo/*-reference.png

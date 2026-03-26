@@ -1,6 +1,7 @@
+// TODO: Extract shared generation logic with stream/route.ts into a common handler
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
-import { searchComponentPrice } from '@/lib/tavily';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordChatUsage } from '@/backend/ai/openai';
+import { searchComponentPrice } from '@/backend/services/tavily';
 import {
     SYSTEM_PROMPT,
     BOM_GENERATION_PROMPT,
@@ -9,17 +10,18 @@ import {
     OPENSCAD_GENERATION_PROMPT,
     OPENSCAD_OBJECT_PROMPT,
     fillPromptTemplate,
-} from '@/lib/prompts';
-import { generateRequestSchema } from '@/lib/validators';
-import type { GenerateResponse, ProjectOutputs, ProjectMetadata } from '@/types';
-import { computeSceneBounds, normalizeSceneColors, fallbackScene, sanitizeSceneElements } from '@/lib/scene';
-import { fallbackOpenSCAD } from '@/lib/openscad';
-import { orchestrate3DGeneration } from '@/lib/agents';
-import { buildProjectDescription } from '@/lib/projectDescription';
-import { infer3DKind } from '@/lib/projectKind';
-import { normalizeBomMarkdown } from '@/lib/bom';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+} from '@/backend/ai/prompts';
+import { generateRequestSchema } from '@/shared/schemas/validators';
+import type { GenerateResponse, ProjectOutputs, ProjectMetadata } from '@/shared/types';
+import { computeSceneBounds, normalizeSceneColors, fallbackScene, sanitizeSceneElements } from '@/shared/domain/scene';
+import { fallbackOpenSCAD } from '@/backend/pipeline/openscad';
+import { orchestrate3DGeneration, planAssemblySpec } from '@/backend/agents';
+import { buildProjectDescription } from '@/shared/domain/projectDescription';
+import { infer3DKind } from '@/shared/domain/projectKind';
+import { normalizeBomMarkdown } from '@/shared/domain/bom';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
+import { assemblySpecToOpenScad, type AssemblySpec } from '@/backend/pipeline/assemblySpec';
 
 export async function POST(request: NextRequest) {
     const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.ai);
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
             smoothness?: number;
         }> | null = null;
         let pipelineTrace: string[] | undefined;
+        let assemblySpec: AssemblySpec | null = null;
 
         if (uniqueOutputTypes.includes('scene-json')) {
             console.log('Starting multi-agent 3D generation pipeline...');
@@ -86,6 +89,7 @@ export async function POST(request: NextRequest) {
                 // Log for debugging
                 result.logs.forEach(log => console.log('[Agent]', log));
                 pipelineTrace = result.logs;
+                assemblySpec = result.assemblySpec ?? null;
 
                 // Convert to scene elements format
                 const kind3d = infer3DKind(mergedDescription, analysisContext);
@@ -94,6 +98,9 @@ export async function POST(request: NextRequest) {
                 sceneElements = normalizeSceneColors(baseScene);
 
                 outputs['scene-json'] = JSON.stringify(sceneElements, null, 2);
+                if (assemblySpec) {
+                    outputs['assembly-spec'] = JSON.stringify(assemblySpec, null, 2);
+                }
             } catch (err) {
                 console.error('Agent pipeline failed:', err);
                 // Use intelligent fallback that detects object type from description
@@ -105,7 +112,7 @@ export async function POST(request: NextRequest) {
 
         const non3dOutputTypes = uniqueOutputTypes.filter((t) => t !== 'openscad' && t !== 'scene-json');
 
-        await Promise.allSettled(non3dOutputTypes.map(async (outputType) => {
+        const generationResults = await Promise.allSettled(non3dOutputTypes.map(async (outputType) => {
             let prompt: string;
 
             switch (outputType) {
@@ -193,46 +200,67 @@ Describe the circuit connections in detail, including:
             }
         }));
 
+        // Log any rejected promises so failures are not silently dropped
+        for (const result of generationResults) {
+            if (result.status === 'rejected') {
+                console.error('Generation task rejected:', result.reason);
+            }
+        }
+
         if (uniqueOutputTypes.includes('openscad')) {
-            const bounds = sceneElements ? computeSceneBounds(sceneElements as Parameters<typeof computeSceneBounds>[0]) : null;
             const kind3d = infer3DKind(mergedDescription, analysisContext);
-            const dimsHint = bounds
-                ? `Derived from 3D scene bounds: ~${Math.ceil(bounds.width)}x${Math.ceil(bounds.depth)}x${Math.ceil(bounds.height)}mm (W x D x H).`
-                : kind3d === 'object'
-                    ? 'Default to a hand-sized object (e.g. ~200mm tall for a small plush/toy).'
-                    : 'Auto-size based on components (typical: 80x50x30mm).';
+            if (kind3d === 'enclosure') {
+                if (!assemblySpec) {
+                    assemblySpec = await planAssemblySpec(
+                        null,
+                        mergedDescription,
+                        model,
+                        { analysis: analysisContext ?? undefined }
+                    );
+                }
 
-            const template = kind3d === 'object' ? OPENSCAD_OBJECT_PROMPT : OPENSCAD_GENERATION_PROMPT;
-            const prompt = fillPromptTemplate(template, {
-                description: mergedDescription,
-                components,
-                features,
-                dimensions: dimsHint,
-            });
+                outputs.openscad = assemblySpecToOpenScad(assemblySpec, mergedDescription);
+                outputs['assembly-spec'] = JSON.stringify(assemblySpec, null, 2);
+            } else {
+                const bounds = sceneElements ? computeSceneBounds(sceneElements as Parameters<typeof computeSceneBounds>[0]) : null;
+                const dimsHint = bounds
+                    ? `Derived from 3D scene bounds: ~${Math.ceil(bounds.width)}x${Math.ceil(bounds.depth)}x${Math.ceil(bounds.height)}mm (W x D x H).`
+                    : kind3d === 'object'
+                        ? 'Default to a hand-sized object (e.g. ~200mm tall for a small plush/toy).'
+                        : 'Auto-size based on components (typical: 80x50x30mm).';
 
-            try {
-                const modelName = getModelName('text', model);
-                const response = await llmClient.chat.completions.create({
-                    model: modelName,
-                    messages: [
-                        { role: 'system', content: SYSTEM_PROMPT },
-                        { role: 'user', content: prompt },
-                    ],
-                    max_tokens: 4000,
+                const template = kind3d === 'object' ? OPENSCAD_OBJECT_PROMPT : OPENSCAD_GENERATION_PROMPT;
+                const prompt = fillPromptTemplate(template, {
+                    description: mergedDescription,
+                    components,
+                    features,
+                    dimensions: dimsHint,
                 });
 
-                recordChatUsage(response, modelName, { requestId: ctx.requestId, source: 'generate:openscad' });
+                try {
+                    const modelName = getModelName('text', model);
+                    const response = await llmClient.chat.completions.create({
+                        model: modelName,
+                        messages: [
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            { role: 'user', content: prompt },
+                        ],
+                        max_tokens: 4000,
+                    });
 
-                const content = response.choices[0]?.message?.content;
-                if (content) {
-                    outputs.openscad = content;
-                } else {
+                    recordChatUsage(response, modelName, { requestId: ctx.requestId, source: 'generate:openscad' });
+
+                    const content = response.choices[0]?.message?.content;
+                    if (content) {
+                        outputs.openscad = content;
+                    } else {
+                        outputs.openscad = fallbackOpenSCAD(mergedDescription, bounds);
+                    }
+                } catch (err) {
+                    recordChatError(getModelName('text', model), { requestId: ctx.requestId, source: 'generate:openscad' }, err as Error);
+                    console.error('Failed to generate openscad:', err);
                     outputs.openscad = fallbackOpenSCAD(mergedDescription, bounds);
                 }
-            } catch (err) {
-                recordChatError(getModelName('text', model), { requestId: ctx.requestId, source: 'generate:openscad' }, err as Error);
-                console.error('Failed to generate openscad:', err);
-                outputs.openscad = fallbackOpenSCAD(mergedDescription, bounds);
             }
         }
 

@@ -8,7 +8,7 @@ All notable changes to Sketch.ai are documented here.
 - Multi-agent 3D generation pipeline (5 agents)
 - Vision-to-3D: Pass sketch image directly to generation
 - Critic + Refiner self-correction loop
-- Comprehensive documentation in `/doc` folder
+- Comprehensive documentation in `/docs` folder
 - Product overview cards for BOM, assembly, and schematic
 - Build guide download (combined BOM + assembly + schematic)
 - Exploded-view toggle for 3D previews
@@ -51,8 +51,8 @@ All notable changes to Sketch.ai are documented here.
 ## [0.1.0] - 2024-12-14
 
 ### Added
-- Initial project setup with Next.js 14
-- Sketch upload and analysis with GPT-4 Vision
+- Initial project setup with Next.js 16
+- Sketch upload and analysis with a vision-capable model (default: gpt-4o)
 - Output generation: BOM, Assembly, Firmware, Schematic, OpenSCAD
 - Chat interface for refinement
 - Export to ZIP

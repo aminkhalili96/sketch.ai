@@ -1,0 +1,67 @@
+<svg width="220" height="280" viewBox="0 0 220 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gcPcbBack" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2F8653"/>
+      <stop offset="100%" stop-color="#256B42"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="280" fill="white"/>
+  <!-- PCB outline -->
+  <rect x="35" y="25" width="150" height="230" rx="8" fill="url(#gcPcbBack)" stroke="#1B5030" stroke-width="5"/>
+  <rect x="43" y="33" width="134" height="214" rx="4" fill="none" stroke="#4AA86A" stroke-width="1.5"/>
+
+  <!-- Ground fill pattern -->
+  <line x1="50" y1="40" x2="170" y2="40" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="60" x2="170" y2="60" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="80" x2="170" y2="80" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="100" x2="170" y2="100" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="120" x2="170" y2="120" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="140" x2="170" y2="140" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="160" x2="170" y2="160" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="180" x2="170" y2="180" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="200" x2="170" y2="200" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="220" x2="170" y2="220" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="50" y1="240" x2="170" y2="240" stroke="#3A7E52" stroke-width="1.5"/>
+
+  <!-- Battery connector -->
+  <rect x="78" y="90" width="44" height="22" rx="3" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1.5"/>
+  <rect x="86" y="94" width="10" height="14" rx="1" fill="#B08D63"/>
+  <rect x="104" y="94" width="10" height="14" rx="1" fill="#B08D63"/>
+  <text x="100" y="124" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#CDE5D2">BAT+/-</text>
+
+  <!-- Vias -->
+  <circle cx="58" cy="50" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="158" cy="50" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="58" cy="75" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="158" cy="75" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="75" cy="135" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="125" cy="135" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="58" cy="160" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="158" cy="160" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="100" cy="175" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="75" cy="195" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="125" cy="195" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="100" cy="210" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+
+  <!-- Via inner holes -->
+  <circle cx="58" cy="50" r="1.5" fill="#256B42"/>
+  <circle cx="158" cy="50" r="1.5" fill="#256B42"/>
+  <circle cx="58" cy="75" r="1.5" fill="#256B42"/>
+  <circle cx="158" cy="75" r="1.5" fill="#256B42"/>
+  <circle cx="75" cy="135" r="1.5" fill="#256B42"/>
+  <circle cx="125" cy="135" r="1.5" fill="#256B42"/>
+  <circle cx="58" cy="160" r="1.5" fill="#256B42"/>
+  <circle cx="158" cy="160" r="1.5" fill="#256B42"/>
+  <circle cx="100" cy="175" r="1.5" fill="#256B42"/>
+  <circle cx="75" cy="195" r="1.5" fill="#256B42"/>
+  <circle cx="125" cy="195" r="1.5" fill="#256B42"/>
+  <circle cx="100" cy="210" r="1.5" fill="#256B42"/>
+
+  <!-- Mounting holes -->
+  <circle cx="45" cy="35" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="175" cy="35" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="45" cy="245" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="175" cy="245" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+
+  <text x="110" y="268" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#CDE5D2">PCB BACK</text>
+</svg>

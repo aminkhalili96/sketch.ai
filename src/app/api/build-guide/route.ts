@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { buildGuideRequestSchema } from '@/lib/validators';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { buildGuideRequestSchema } from '@/shared/schemas/validators';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 export async function POST(request: NextRequest) {
     const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.general);

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, recordChatError, recordChatUsage } from '@/lib/openai';
-import { SYSTEM_PROMPT, CHAT_REFINEMENT_PROMPT, fillPromptTemplate } from '@/lib/prompts';
-import { chatRequestSchema } from '@/lib/validators';
-import type { ChatResponse } from '@/types';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { getLLMClient, getModelName, handleOpenAIError, recordChatError, recordChatUsage } from '@/backend/ai/openai';
+import { SYSTEM_PROMPT, CHAT_REFINEMENT_PROMPT, fillPromptTemplate } from '@/backend/ai/prompts';
+import { chatRequestSchema } from '@/shared/schemas/validators';
+import type { ChatResponse } from '@/shared/types';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 function explainEmptyChoice(choice: unknown): string {
     if (!choice || typeof choice !== 'object') return 'AI returned an empty response.';

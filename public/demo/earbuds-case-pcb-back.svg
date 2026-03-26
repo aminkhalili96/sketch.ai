@@ -1,0 +1,60 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pcbBackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2F8653"/>
+      <stop offset="100%" stop-color="#256B42"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="220" fill="white"/>
+  <!-- PCB outline -->
+  <rect x="30" y="55" width="160" height="110" rx="8" fill="url(#pcbBackGrad)" stroke="#1B5030" stroke-width="5"/>
+  <rect x="38" y="63" width="144" height="94" rx="4" fill="none" stroke="#4AA86A" stroke-width="1.5"/>
+
+  <!-- Ground plane traces -->
+  <line x1="45" y1="70" x2="175" y2="70" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="45" y1="85" x2="175" y2="85" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="45" y1="100" x2="175" y2="100" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="45" y1="115" x2="175" y2="115" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="45" y1="130" x2="175" y2="130" stroke="#3A7E52" stroke-width="1.5"/>
+  <line x1="45" y1="145" x2="175" y2="145" stroke="#3A7E52" stroke-width="1.5"/>
+
+  <!-- JST Battery connector -->
+  <rect x="80" y="78" width="36" height="18" rx="3" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1.5"/>
+  <rect x="88" y="82" width="8" height="10" rx="1" fill="#B08D63"/>
+  <rect x="100" y="82" width="8" height="10" rx="1" fill="#B08D63"/>
+  <text x="98" y="106" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#CDE5D2">BAT+/-</text>
+
+  <!-- Vias -->
+  <circle cx="55" cy="76" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="70" cy="92" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="140" cy="76" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="160" cy="92" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="55" cy="110" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="160" cy="110" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="70" cy="126" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="140" cy="126" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="110" cy="138" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="90" cy="138" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="130" cy="138" r="3.5" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+
+  <!-- Via inner holes -->
+  <circle cx="55" cy="76" r="1.5" fill="#256B42"/>
+  <circle cx="70" cy="92" r="1.5" fill="#256B42"/>
+  <circle cx="140" cy="76" r="1.5" fill="#256B42"/>
+  <circle cx="160" cy="92" r="1.5" fill="#256B42"/>
+  <circle cx="55" cy="110" r="1.5" fill="#256B42"/>
+  <circle cx="160" cy="110" r="1.5" fill="#256B42"/>
+  <circle cx="70" cy="126" r="1.5" fill="#256B42"/>
+  <circle cx="140" cy="126" r="1.5" fill="#256B42"/>
+  <circle cx="110" cy="138" r="1.5" fill="#256B42"/>
+  <circle cx="90" cy="138" r="1.5" fill="#256B42"/>
+  <circle cx="130" cy="138" r="1.5" fill="#256B42"/>
+
+  <!-- 4 Mounting holes -->
+  <circle cx="40" cy="65" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="180" cy="65" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="40" cy="155" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="180" cy="155" r="4" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+
+  <text x="110" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#CDE5D2">PCB BACK</text>
+</svg>

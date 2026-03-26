@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordChatUsage } from '@/lib/openai';
-import { agentPlanSchema, agentsPlanRequestSchema } from '@/lib/validators';
-import { normalizePlanForRequest } from '@/lib/agents/registry';
-import type { AgentsPlanResponse, AgentPlan } from '@/types';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordChatUsage } from '@/backend/ai/openai';
+import { agentPlanSchema, agentsPlanRequestSchema } from '@/shared/schemas/validators';
+import { normalizePlanForRequest } from '@/backend/agents/registry';
+import type { AgentsPlanResponse, AgentPlan } from '@/shared/types';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 function formatExistingOutputs(outputs: Record<string, unknown> | undefined): string {
     if (!outputs) return 'No outputs generated yet';

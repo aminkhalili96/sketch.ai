@@ -9,8 +9,19 @@ export default defineConfig({
         globals: true,
         setupFiles: ['./vitest.setup.ts'],
         include: ['**/*.test.{ts,tsx}'],
+        exclude: ['**/node_modules/**', '**/.next/**', '**/.claude/**'],
         alias: {
             '@': path.resolve(__dirname, './src'),
+        },
+        environmentMatchGlobs: [
+            ['tests/api/**', 'node'],
+            ['tests/e2e/**', 'node'],
+        ],
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'lcov'],
+            include: ['src/**/*.ts', 'src/**/*.tsx'],
+            exclude: ['src/**/*.test.*', 'src/**/types/**'],
         },
     },
 })

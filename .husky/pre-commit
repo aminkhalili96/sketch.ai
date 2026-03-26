@@ -2,7 +2,7 @@
 . "$(dirname "$0")/_/husky.sh"
 
 # 1. Prevent .env files (except .env.example)
-if git diff --cached --name-only | grep -E "^\.env(?!.example$)" > /dev/null; then
+if git diff --cached --name-only | grep -E "^\.env(?!\.example$)" > /dev/null; then
   echo "❌ SECURITY CHECKS FAILED"
   echo "   You are trying to commit a .env file."
   echo "   Use .env.example for templates."
@@ -23,8 +23,7 @@ if git diff --cached --name-only | xargs grep -E "sk-[a-zA-Z0-9]{48}" > /dev/nul
   echo "⚠️  POSSIBLE API KEY DETECTED"
   echo "   It looks like you might have an OpenAI key in your code."
   echo "   Please check your staged files."
-  # Uncomment the next line to strictly block it
-  # exit 1
+  exit 1
 fi
 
 # 4. Optional: Run Lint/Types (commented out for speed, enable if strict)

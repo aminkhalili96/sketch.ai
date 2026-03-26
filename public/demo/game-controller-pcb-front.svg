@@ -1,0 +1,83 @@
+<svg width="220" height="280" viewBox="0 0 220 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gcPcbFront" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3E9B5A"/>
+      <stop offset="100%" stop-color="#2E7A48"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="280" fill="white"/>
+  <!-- PCB outline -->
+  <rect x="35" y="25" width="150" height="230" rx="8" fill="url(#gcPcbFront)" stroke="#1F5A34" stroke-width="5"/>
+  <rect x="43" y="33" width="134" height="214" rx="4" fill="none" stroke="#5BC07A" stroke-width="1.5"/>
+
+  <!-- ESP32-S3 (large QFN center) -->
+  <rect x="72" y="100" width="56" height="56" rx="4" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="2"/>
+  <rect x="80" y="108" width="40" height="26" rx="2" fill="#C9B28A"/>
+  <rect x="80" y="138" width="40" height="10" rx="2" fill="#BFA57B"/>
+  <text x="100" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="5.5" fill="#1F5A34">ESP32-S3</text>
+
+  <!-- BT module -->
+  <rect x="140" y="50" width="34" height="22" rx="3" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1.5"/>
+  <text x="157" y="64" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#1F5A34">BT</text>
+
+  <!-- Joystick footprint (circle with 5 pin dots) -->
+  <circle cx="66" cy="58" r="20" fill="none" stroke="#D9CDBA" stroke-width="2.5"/>
+  <circle cx="66" cy="58" r="14" fill="#F2E9D7" stroke="#C9B28A" stroke-width="1.5"/>
+  <circle cx="66" cy="48" r="2" fill="#A38B66"/>
+  <circle cx="66" cy="68" r="2" fill="#A38B66"/>
+  <circle cx="56" cy="58" r="2" fill="#A38B66"/>
+  <circle cx="76" cy="58" r="2" fill="#A38B66"/>
+  <circle cx="66" cy="58" r="2" fill="#A38B66"/>
+
+  <!-- 4 button pads (diamond pattern) -->
+  <circle cx="158" cy="110" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="170" cy="122" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="146" cy="122" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="158" cy="134" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <!-- Button inner dots -->
+  <circle cx="158" cy="110" r="2.5" fill="#A38B66"/>
+  <circle cx="170" cy="122" r="2.5" fill="#A38B66"/>
+  <circle cx="146" cy="122" r="2.5" fill="#A38B66"/>
+  <circle cx="158" cy="134" r="2.5" fill="#A38B66"/>
+
+  <!-- Trigger pad -->
+  <rect x="46" y="86" width="24" height="10" rx="2" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <text x="58" y="94" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#A38B66">TRG</text>
+
+  <!-- Rumble motor pads -->
+  <circle cx="60" cy="192" r="10" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="2"/>
+  <circle cx="60" cy="192" r="5" fill="#C9B28A"/>
+  <text x="60" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#1F5A34">MOTOR</text>
+
+  <!-- USB-C at bottom -->
+  <rect x="80" y="230" width="50" height="16" rx="4" fill="#B08D63" stroke="#896A44" stroke-width="2"/>
+  <rect x="86" y="234" width="38" height="8" rx="3" fill="#7A5C3B"/>
+
+  <!-- 8 passives -->
+  <rect x="48" y="170" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="48" y="180" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="130" y="170" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="130" y="180" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="130" y="190" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="90" y="86" width="5" height="10" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="115" y="86" width="5" height="10" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="100" y="80" width="5" height="10" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+
+  <!-- Traces -->
+  <line x1="100" y1="100" x2="100" y2="90" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="128" y1="128" x2="140" y2="122" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="128" y1="112" x2="152" y2="110" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="86" y1="58" x2="92" y2="91" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="128" y1="118" x2="140" y2="55" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="72" y1="128" x2="60" y2="182" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="100" y1="156" x2="100" y2="230" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="70" y1="92" x2="72" y2="100" stroke="#89CFA2" stroke-width="2"/>
+
+  <!-- Mounting holes -->
+  <circle cx="45" cy="35" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="175" cy="35" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="45" cy="245" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="175" cy="245" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+
+  <text x="110" y="268" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#1F5A34">PCB FRONT</text>
+</svg>

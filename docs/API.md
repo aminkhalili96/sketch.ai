@@ -160,6 +160,37 @@ Exports project as a ZIP file.
 
 ---
 
+### POST /api/render-3d
+
+Generates a CAD-based photoreal render plus CAD exports (STEP/STL).
+
+**Request:**
+```json
+{
+  "projectDescription": "Compact puck sensor",
+  "analysisContext": { /* optional AnalysisResult */ },
+  "assemblySpec": "{...}", // optional JSON string
+  "renderMode": "exploded"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "renderPngBase64": "<base64 PNG>",
+  "cadStepBase64": "<base64 STEP>",
+  "cadStlBase64": "<base64 STL>",
+  "assemblySpec": "{...}"
+}
+```
+
+Notes:
+- Requires CadQuery and Blender installed locally.
+- `renderMode` can be `assembled` or `exploded`.
+
+---
+
 ### POST /api/compile-3d
 
 Compiles OpenSCAD code to STL.
@@ -167,7 +198,7 @@ Compiles OpenSCAD code to STL.
 **Request:**
 ```json
 {
-  "code": "cube([10, 10, 10]);",
+  "openscadCode": "cube([10, 10, 10]);",
   "format": "stl"
 }
 ```
@@ -176,7 +207,7 @@ Compiles OpenSCAD code to STL.
 ```json
 {
   "success": true,
-  "stl": "base64-encoded-stl-data"
+  "stlBase64": "base64-encoded-stl-data"
 }
 ```
 

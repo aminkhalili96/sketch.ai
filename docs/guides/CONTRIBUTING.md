@@ -30,15 +30,20 @@ npm test -- --watch   # Watch mode
 
 ### Adding a New Agent
 
-See [AGENTS.md](AGENTS.md#adding-a-new-agent) for detailed instructions.
+See [AGENTS.md](../architecture/AGENTS.md#adding-a-new-agent) for detailed instructions.
 
 ### Adding a New API Endpoint
 
 1. Create route in `src/app/api/[endpoint]/route.ts`
-2. Add Zod schema in `src/lib/validators.ts`
-3. Add types in `src/types/index.ts`
+2. Add Zod schema in `src/shared/schemas/validators.ts`
+3. Add types in `src/shared/types/index.ts`
 4. Write tests
-5. Document in [API.md](API.md)
+5. Document in [API.md](../API.md)
+
+## Documentation Consistency
+
+- Update docs when behavior, endpoints, or model defaults change.
+- Keep examples and architecture diagrams aligned with the codebase.
 
 ## Pull Request Process
 

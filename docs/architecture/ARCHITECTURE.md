@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into accurate 3D models.
+Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into accurate 3D models. For electronics enclosures, it first builds a structured assembly specification (enclosure + PCB + components) and then converts that spec into scene JSON and OpenSCAD deterministically.
 
 ## System Architecture
 
@@ -19,25 +19,27 @@ Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into
 ┌─────────────────────────────────────────────────────────────────┐
 │                         API Layer                                │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
-│  │ /analyze │  │/generate │  │  /chat   │  │ /export | /build  │ │
+│  │ /analyze │  │/generate │  │  /chat   │  │ /export | /build-guide │ │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Multi-Agent Pipeline                          │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────┐  ┌─────────┐    │
-│  │   Vision    │→ │  Structure   │→ │ Critic │→ │ Refiner │    │
-│  │  Analyzer   │  │   Planner    │  │        │  │         │    │
-│  └─────────────┘  └──────────────┘  └────────┘  └─────────┘    │
+│  ┌─────────────┐  ┌──────────────────┐  ┌────────┐  ┌─────────┐│
+│  │   Vision    │→ │ Structure Planner│→ │ Critic │→ │ Refiner ││
+│  │  Analyzer   │  └──────────────────┘  └────────┘  └─────────┘│
+│  └─────────────┘                                                │
+│         │                                                       │
+│         └── Enclosure path: Assembly Spec → Scene JSON/OpenSCAD  │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      External Services                           │
 │  ┌──────────────────────┐  ┌───────────────────────────────────┐│
-│  │  OpenAI GPT-4o       │  │  Tavily (Pricing Search)         ││
-│  │  GPT-4 Vision        │  │                                   ││
+│  │  OpenAI GPT-5.2 (text)│  │  Tavily (Pricing Search)         ││
+│  │  OpenAI GPT-4o (vision)│ │                                   ││
 │  └──────────────────────┘  └───────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -52,7 +54,7 @@ Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into
      ▼
 ┌─────────────────────────────────────┐
 │        1. Vision Analyzer           │
-│  - GPT-4 Vision analyzes image      │
+│  - Vision-capable model analyzes image (default: gpt-4o) │
 │  - Extracts: object type, parts,    │
 │    colors, dimensions               │
 │  - Output: VisionAnalysis           │
@@ -60,16 +62,23 @@ Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into
      │
      ▼
 ┌─────────────────────────────────────┐
-│       2. Structure Planner          │
+│    2. Assembly Spec (Enclosures)    │
+│  - Generates enclosure + PCB spec   │
+│  - Defines ports + components       │
+│  - Output: AssemblySpec             │
+└─────────────────────────────────────┘
+     │
+     ▼
+┌─────────────────────────────────────┐
+│       3. Structure Planner          │
+│  - Used for non-enclosure objects   │
 │  - Creates 3D element plan          │
-│  - Positions & dimensions           │
-│  - Material assignments             │
 │  - Output: StructurePlan            │
 └─────────────────────────────────────┘
      │
      ▼
 ┌─────────────────────────────────────┐
-│          3. Critic                  │
+│          4. Critic                  │
 │  - Validates scene vs input         │
 │  - Checks: type match, parts,       │
 │    colors, proportions              │
@@ -78,7 +87,7 @@ Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into
      │ (if issues found)
      ▼
 ┌─────────────────────────────────────┐
-│          4. Refiner                 │
+│          5. Refiner                 │
 │  - Fixes identified issues          │
 │  - Adds missing parts               │
 │  - Corrects type mismatches         │
@@ -88,6 +97,13 @@ Sketch.ai uses a **multi-agent AI pipeline** to transform hardware sketches into
      ▼
 [Final 3D Scene JSON]
 ```
+
+### CAD + Photoreal Render
+
+For high-quality renders, the system can generate CAD geometry (CadQuery) and pass the resulting parts to Blender (Cycles) for photoreal output. This pipeline runs on-demand via `/api/render-3d` and produces:
+- `render.png` (photoreal image)
+- `model.step` (CAD assembly)
+- `model.stl` (mesh assembly)
 
 ### Context Merging
 
@@ -122,7 +138,7 @@ This merged description is used for inference, prompts, and fallbacks to prevent
 │  │  ├── outputs                    ││
 │  │  └── messages                   ││
 │  └─────────────────────────────────┘│
-│  + localStorage persistence         │
+│  + sessionStorage persistence       │
 └─────────────────────────────────────┘
 ```
 

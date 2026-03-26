@@ -2,7 +2,7 @@
 
 ## Overview
 
-All LLM prompts are centralized in `src/lib/prompts.ts` for easy tuning and maintenance.
+All LLM prompts are centralized in `src/backend/ai/prompts.ts` for easy tuning and maintenance.
 
 ## Prompt Categories
 
@@ -166,7 +166,7 @@ Defines the AI assistant persona - "Sketch.AI, an expert hardware design assista
 
 ## Modifying Prompts
 
-1. Edit `src/lib/prompts.ts`
+1. Edit `src/backend/ai/prompts.ts`
 2. Test with `npm test`
 3. Manual test with various sketches
 4. Update this documentation

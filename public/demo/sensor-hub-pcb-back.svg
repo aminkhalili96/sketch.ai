@@ -1,0 +1,78 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="shPcbBack" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#2F8653"/>
+      <stop offset="100%" stop-color="#256B42"/>
+    </radialGradient>
+  </defs>
+  <rect width="220" height="220" fill="white"/>
+  <!-- Round PCB -->
+  <circle cx="110" cy="110" r="96" fill="url(#shPcbBack)" stroke="#1B5030" stroke-width="6"/>
+  <circle cx="110" cy="110" r="84" fill="none" stroke="#4AA86A" stroke-width="2"/>
+
+  <!-- SHT40 (small DFN) -->
+  <rect x="56" y="70" width="28" height="20" rx="3" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <rect x="62" y="74" width="16" height="8" rx="1" fill="#C9B28A"/>
+  <text x="70" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="5.5" fill="#CDE5D2">SHT40</text>
+
+  <!-- SGP41 (DFN) -->
+  <rect x="130" y="70" width="28" height="20" rx="3" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <rect x="136" y="74" width="16" height="8" rx="1" fill="#C9B28A"/>
+  <text x="144" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="5.5" fill="#CDE5D2">SGP41</text>
+
+  <!-- VEML7700 (tiny square with window) -->
+  <rect x="56" y="118" width="22" height="22" rx="2" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="67" cy="129" r="6" fill="#E0D8C8" stroke="#C9B28A" stroke-width="1"/>
+  <circle cx="67" cy="129" r="3" fill="#F7F4EE"/>
+  <text x="67" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#CDE5D2">VEML7700</text>
+
+  <!-- MEMS mic (circle) -->
+  <rect x="132" y="118" width="24" height="24" rx="3" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="144" cy="130" r="7" fill="#E0D8C8" stroke="#C9B28A" stroke-width="1.5"/>
+  <circle cx="144" cy="130" r="2.5" fill="#A38B66"/>
+  <text x="144" y="152" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#CDE5D2">MEMS MIC</text>
+
+  <!-- Board-to-board header -->
+  <rect x="88" y="72" width="30" height="36" rx="2" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <!-- 2x5 pin grid -->
+  <circle cx="96" cy="78" r="2" fill="#A38B66"/>
+  <circle cx="110" cy="78" r="2" fill="#A38B66"/>
+  <circle cx="96" cy="84" r="2" fill="#A38B66"/>
+  <circle cx="110" cy="84" r="2" fill="#A38B66"/>
+  <circle cx="96" cy="90" r="2" fill="#A38B66"/>
+  <circle cx="110" cy="90" r="2" fill="#A38B66"/>
+  <circle cx="96" cy="96" r="1.5" fill="#A38B66"/>
+  <circle cx="110" cy="96" r="1.5" fill="#A38B66"/>
+  <circle cx="96" cy="102" r="1.5" fill="#A38B66"/>
+  <circle cx="110" cy="102" r="1.5" fill="#A38B66"/>
+  <text x="103" y="66" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#CDE5D2">B2B HDR</text>
+
+  <!-- 6 passives -->
+  <rect x="86" y="120" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="86" y="128" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="110" y="120" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="110" y="128" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="86" y="136" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+  <rect x="110" y="136" width="8" height="4" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="0.8"/>
+
+  <!-- Traces -->
+  <line x1="84" y1="80" x2="88" y2="80" stroke="#89CFA2" stroke-width="1.5"/>
+  <line x1="118" y1="80" x2="130" y2="80" stroke="#89CFA2" stroke-width="1.5"/>
+  <line x1="96" y1="102" x2="78" y2="118" stroke="#89CFA2" stroke-width="1.5"/>
+  <line x1="110" y1="102" x2="132" y2="118" stroke="#89CFA2" stroke-width="1.5"/>
+  <line x1="88" y1="85" x2="70" y2="90" stroke="#89CFA2" stroke-width="1.5"/>
+  <line x1="118" y1="85" x2="144" y2="90" stroke="#89CFA2" stroke-width="1.5"/>
+
+  <!-- Vias -->
+  <circle cx="103" cy="160" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="80" cy="160" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="126" cy="160" r="3.5" fill="#CDE5D2" stroke="#1B5030" stroke-width="1"/>
+  <circle cx="103" cy="160" r="1.5" fill="#256B42"/>
+  <circle cx="80" cy="160" r="1.5" fill="#256B42"/>
+  <circle cx="126" cy="160" r="1.5" fill="#256B42"/>
+
+  <!-- Mounting hole -->
+  <circle cx="110" cy="26" r="5" fill="#EFE8D8" stroke="#D9CDBA" stroke-width="2"/>
+
+  <text x="110" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#CDE5D2">SENSOR BOARD</text>
+</svg>

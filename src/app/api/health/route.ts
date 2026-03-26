@@ -1,8 +1,8 @@
 // Health Check Endpoint - Kubernetes-compatible health/readiness probe
 import { NextResponse } from 'next/server';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
-import { isOfflineMode } from '@/lib/openai';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
+import { isOfflineMode } from '@/backend/ai/openai';
 
 const startTime = Date.now();
 
@@ -11,6 +11,7 @@ interface HealthStatus {
     version: string;
     uptime: number;
     timestamp: string;
+    offlineMode: boolean;
     checks: {
         database?: 'ok' | 'error';
         openai?: 'ok' | 'error' | 'unchecked';
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
         version: process.env.npm_package_version || '0.1.0',
         uptime: Math.floor((Date.now() - startTime) / 1000),
         timestamp: new Date().toISOString(),
+        offlineMode: isOfflineMode(),
         checks: {},
     };
 

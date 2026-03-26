@@ -13,6 +13,22 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    files: ['src/frontend/**/*'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{ group: ['@/backend/*'], message: 'Frontend code must not import from @/backend' }]
+      }],
+    },
+  },
+  {
+    files: ['src/backend/**/*'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{ group: ['@/frontend/*'], message: 'Backend code must not import from @/frontend' }]
+      }],
+    },
+  },
 ]);
 
 export default eslintConfig;

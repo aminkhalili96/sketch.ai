@@ -4,8 +4,8 @@ import { promisify } from 'util';
 import { writeFile, readFile, unlink, mkdtemp, rm } from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 const execFileAsync = promisify(execFile);
 const MAX_OPENSCAD_CHARS = 300_000;

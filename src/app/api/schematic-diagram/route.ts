@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, recordChatError, recordChatUsage } from '@/lib/openai';
-import { SCHEMATIC_SVG_PROMPT, SYSTEM_PROMPT, fillPromptTemplate } from '@/lib/prompts';
-import { schematicDiagramRequestSchema } from '@/lib/validators';
-import { buildFallbackSchematicSvg } from '@/lib/schematicSvg';
-import type { AnalysisResult } from '@/types';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { getLLMClient, getModelName, handleOpenAIError, recordChatError, recordChatUsage } from '@/backend/ai/openai';
+import { SCHEMATIC_SVG_PROMPT, SYSTEM_PROMPT, fillPromptTemplate } from '@/backend/ai/prompts';
+import { schematicDiagramRequestSchema } from '@/shared/schemas/validators';
+import { buildFallbackSchematicSvg } from '@/backend/pipeline/schematicSvg';
+import type { AnalysisResult } from '@/shared/types';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 function extractSvg(content: string): string | null {
     const match = content.match(/<svg[\s\S]*<\/svg>/i);

@@ -43,10 +43,10 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        EXTERNAL SERVICES                            │
 ├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │ OpenAI API   │  │  Supabase    │  │ Vercel Blob  │              │
-│  │ GPT-4/Vision │  │  (Database)  │  │ (Storage)    │              │
-│  └──────────────┘  └──────────────┘  └──────────────┘              │
+│  ┌──────────────┐  ┌──────────────┐                               │
+│  │ OpenAI API   │  │ Tavily API   │                               │
+│  │ GPT-5.2/4o   │  │ (Pricing)    │                               │
+│  └──────────────┘  └──────────────┘                               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -57,34 +57,34 @@
 ### Frontend
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Next.js | 14.x | React framework with App Router |
-| React | 18.x | UI library |
+| Next.js | 16.x | React framework with App Router |
+| React | 19.x | UI library |
 | TypeScript | 5.x | Type safety |
-| Tailwind CSS | 3.x | Styling |
+| Tailwind CSS | 4.x | Styling |
 | shadcn/ui | latest | UI components |
-| Zustand | 4.x | State management |
+| Zustand | 5.x | State management |
 | React Dropzone | 14.x | File upload |
-| React Markdown | 9.x | Render AI outputs |
+| React Markdown | 10.x | Render AI outputs |
 
 ### Backend
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Next.js API Routes | 14.x | Backend API |
-| OpenAI SDK | 4.x | AI integration |
-| Zod | 3.x | Schema validation |
+| Next.js API Routes | 16.x | Backend API |
+| OpenAI SDK | 6.x | AI integration |
+| Zod | 4.x | Schema validation |
 
 ### Database & Storage
 | Technology | Purpose |
 |------------|---------|
-| Supabase | PostgreSQL database, auth |
-| Vercel Blob | File storage for uploads |
+| None (default) | No external database configured in this repo |
+| Optional | Add Postgres or object storage if persistence is required |
 
 ### DevOps
 | Technology | Purpose |
 |------------|---------|
-| Vercel | Hosting & deployment |
+| Docker + Cloud Run | Containerized deployment (reference) |
 | GitHub Actions | CI/CD |
-| ESLint + Prettier | Code quality |
+| ESLint | Code quality |
 
 ---
 
@@ -92,56 +92,23 @@
 
 ```
 sketch.ai/
-├── app/                          # Next.js App Router
-│   ├── layout.tsx               # Root layout
-│   ├── page.tsx                 # Home page
-│   ├── projects/
-│   │   ├── page.tsx             # Projects list
-│   │   └── [id]/
-│   │       └── page.tsx         # Single project view
-│   └── api/
-│       ├── analyze/
-│       │   └── route.ts         # Image analysis endpoint
-│       ├── generate/
-│       │   └── route.ts         # Text generation endpoint
-│       ├── chat/
-│       │   └── route.ts         # Conversational endpoint
-│       └── export/
-│           └── route.ts         # Export to ZIP
-│
-├── components/
-│   ├── ui/                      # shadcn/ui components
-│   ├── SketchUploader.tsx       # Drag & drop upload
-│   ├── ChatInterface.tsx        # Chat UI
-│   ├── OutputTabs.tsx           # BOM/Assembly/Firmware tabs
-│   ├── OutputViewer.tsx         # Markdown renderer
-│   └── ProjectCard.tsx          # Project thumbnail
-│
-├── lib/
-│   ├── openai.ts                # OpenAI client setup
-│   ├── prompts.ts               # AI prompt templates
-│   ├── validators.ts            # Zod schemas
-│   └── utils.ts                 # Helper functions
-│
-├── stores/
-│   └── projectStore.ts          # Zustand store
-│
-├── types/
-│   └── index.ts                 # TypeScript types
+├── src/
+│   ├── app/                     # Next.js App Router + API routes
+│   ├── frontend/                # Client UI + state
+│   ├── backend/                 # Server-side logic
+│   ├── shared/                  # Cross-cutting types and domain logic
+│   └── middleware.ts            # Security and request middleware
 │
 ├── docs/                        # Project documentation
-│   ├── PRD.md
-│   ├── TECH_SPEC.md
-│   └── IMPLEMENTATION_PLAN.md
-│
 ├── public/
-│   └── images/
+│   └── demo/                    # Demo assets
+├── tests/                       # Unit and API tests
 │
-├── .env.local                   # Environment variables
-├── next.config.js
-├── tailwind.config.js
+├── .env                         # Environment variables
+├── next.config.ts
 ├── tsconfig.json
-└── package.json
+├── package.json
+└── package-lock.json
 ```
 
 ---
@@ -149,7 +116,7 @@ sketch.ai/
 ## 4. API Endpoints
 
 ### POST `/api/analyze`
-Analyzes uploaded sketch using GPT-4 Vision.
+Analyzes uploaded sketch using a vision-capable model (default: gpt-4o).
 
 **Request:**
 ```typescript
@@ -377,30 +344,40 @@ Calculate total estimated cost.
 | **Caching** | Cache common component data |
 | **Lazy Loading** | Load output tabs on demand |
 | **Image Optimization** | Compress uploads before sending to Vision API |
-| **Edge Functions** | Deploy API routes to Vercel Edge |
+| **Edge Runtime** | Optional edge deployment on supported platforms |
 
 ---
 
 ## 9. Environment Variables
 
 ```env
-# OpenAI
+# Core
 OPENAI_API_KEY=sk-...
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_ORG_ID=org_...
 
-# Database (Supabase)
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=...
+# Model overrides
+OPENAI_TEXT_MODEL=gpt-5.2
+OPENAI_VISION_MODEL=gpt-4o
 
-# Storage
-BLOB_READ_WRITE_TOKEN=...
+# Offline mode (optional)
+USE_OFFLINE_MODEL=false
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_TEXT_MODEL=qwen2.5:7b
+OLLAMA_VISION_MODEL=llava:7b
 
-# Auth
-NEXTAUTH_SECRET=...
-NEXTAUTH_URL=http://localhost:3000
+# Tavily (optional)
+TAVILY_API_KEY=tvly_...
 
-# Feature Flags
-ENABLE_VOICE_INPUT=false
-ENABLE_3D_GENERATION=false
+# API access (optional)
+API_KEYS=key1,key2
+
+# Logging (optional)
+LOG_LEVEL=info
+LOG_FORMAT=json
+
+# Tooling (optional)
+OPENSCAD_PATH=openscad
 ```
 
 ---

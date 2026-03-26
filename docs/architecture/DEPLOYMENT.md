@@ -2,7 +2,7 @@
 
 This project automatically deploys to **Google Cloud Run** when changes are pushed to the `main` branch, but only after passing all tests in the CI pipeline.
 
-## 🛠️ Deployment Stack
+## Deployment Stack
 
 | Component | Tool / Platform | Purpose |
 | :--- | :--- | :--- |
@@ -12,11 +12,11 @@ This project automatically deploys to **Google Cloud Run** when changes are push
 | **Registry** | **Google Container Registry (GCR)** | Stores the private Docker images. |
 | **Hosting** | **Google Cloud Run** | Runs the serverless containers (auto-scaling). |
 
-## 🔄 End-to-End Pipeline
+## End-to-End Pipeline
 
 ```mermaid
 graph LR
-    A[🧑‍💻 Developer] -->|Push Code| B[GitHub Repo]
+    A[Developer] -->|Push Code| B[GitHub Repo]
     B -->|Trigger| C{GitHub Actions}
     
     subgraph CI [Continuous Integration]
@@ -30,28 +30,28 @@ graph LR
         G -->|Deploy| H[Google Cloud Run]
     end
     
-    H -->|Live URL| I[🌍 sketch.ai]
-    E -.->|Fail| J[❌ Stop & Notify]
+    H -->|Live URL| I[sketch.ai]
+    E -.->|Fail| J[Stop & Notify]
 ```
 
-## 🚀 CI/CD Pipeline Stages
+## CI/CD Pipeline Stages
 
 We use GitHub Actions for our Continuous Integration and Continuous Deployment pipeline.
 
 ### Pipeline Stages
 
-1.  **🧪 CI Stage (Pull Requests & Pushes)**
+1.  **CI Stage (Pull Requests & Pushes)**
     *   **Linting:** Checks for code style issues (`npm run lint`).
     *   **Type Checking:** Verifies TypeScript types (`npx tsc --noEmit`).
     *   **Testing:** Runs unit tests (`npm test`).
     *   *If any step fails, the pipeline stops and deployment is blocked.*
 
-2.  **🚀 CD Stage (Main Branch Only)**
+2.  **CD Stage (Main Branch Only)**
     *   **Build:** Creates a production Docker image.
     *   **Push:** Uploads the image to Google Container Registry (GCR).
     *   **Deploy:** Updates the Cloud Run service with the new image.
 
-## 🔑 Requirements
+## Requirements
 
 To facilitate deployment, the following secrets must be set in the GitHub Repository Settings:
 
@@ -61,7 +61,7 @@ To facilitate deployment, the following secrets must be set in the GitHub Reposi
 | `GCP_SA_KEY` | JSON key for a Service Account with Cloud Run & GCR permissions. |
 | `OPENAI_API_KEY` | Your OpenAI API Key (injected into the container). |
 
-## 📦 Manual Deployment (Optional)
+## Manual Deployment (Optional)
 
 You can also build and deploy manually from your local machine if needed:
 
@@ -82,7 +82,7 @@ gcloud run deploy sketch-ai \
   --set-env-vars "OPENAI_API_KEY=sk-..."
 ```
 
-## 🐳 Docker
+## Docker
 
 The application is containerized using a multi-stage `Dockerfile` optimized for production:
 *   **Deps Stage:** Installs dependencies.

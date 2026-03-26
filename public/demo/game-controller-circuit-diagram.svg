@@ -1,0 +1,84 @@
+<svg width="460" height="320" viewBox="0 0 460 320" xmlns="http://www.w3.org/2000/svg">
+  <rect width="460" height="320" fill="#ffffff"/>
+  <rect x="12" y="12" width="436" height="296" rx="12" fill="#ffffff" stroke="#A8A8B8" stroke-width="2"/>
+
+  <text x="28" y="40" font-family="Arial, sans-serif" font-size="14" fill="#1B1B1B">Game Controller Circuit Diagram</text>
+
+  <!-- ESP32-S3 (center) -->
+  <rect x="160" y="100" width="140" height="90" rx="6" fill="#FDF8E7" stroke="#444" stroke-width="1.5"/>
+  <text x="230" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#222">ESP32-S3</text>
+  <text x="230" y="156" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#666">(MCU + WiFi)</text>
+
+  <!-- BT Module -->
+  <rect x="340" y="56" width="100" height="48" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="390" y="84" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">BT Module</text>
+
+  <!-- Joystick -->
+  <rect x="30" y="60" width="100" height="48" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="80" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">Joystick</text>
+
+  <!-- 4x Buttons -->
+  <rect x="30" y="130" width="100" height="48" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="80" y="158" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">4x Buttons</text>
+
+  <!-- Trigger -->
+  <rect x="30" y="200" width="100" height="44" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="80" y="226" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">Trigger</text>
+
+  <!-- Rumble Motor -->
+  <rect x="340" y="120" width="100" height="48" rx="6" fill="#F2F2FA" stroke="#888" stroke-width="1"/>
+  <text x="390" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#333">Rumble</text>
+  <text x="390" y="156" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#333">Motor</text>
+
+  <!-- USB-C -->
+  <rect x="160" y="225" width="80" height="48" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="200" y="253" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">USB-C</text>
+
+  <!-- PMIC -->
+  <rect x="270" y="225" width="80" height="48" rx="6" fill="#FDF8E7" stroke="#444" stroke-width="1.5"/>
+  <text x="310" y="253" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">PMIC</text>
+
+  <!-- Battery -->
+  <rect x="375" y="225" width="70" height="48" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="410" y="253" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">Battery</text>
+
+  <!-- ESP32-S3 to BT Module (SPI) -->
+  <line x1="300" y1="120" x2="340" y2="80" stroke="#444" stroke-width="2"/>
+  <circle cx="300" r="3" cy="120" fill="#444"/>
+  <text x="316" y="96" font-family="Arial, sans-serif" font-size="10" fill="#666">SPI</text>
+
+  <!-- ESP32-S3 to Joystick (ADC) -->
+  <line x1="160" y1="120" x2="130" y2="84" stroke="#444" stroke-width="2"/>
+  <circle cx="160" r="3" cy="120" fill="#444"/>
+  <text x="140" y="96" font-family="Arial, sans-serif" font-size="10" fill="#666">ADC</text>
+
+  <!-- ESP32-S3 to Buttons (GPIO) -->
+  <line x1="160" y1="145" x2="130" y2="154" stroke="#444" stroke-width="2"/>
+  <circle cx="160" r="3" cy="145" fill="#444"/>
+  <text x="140" y="146" font-family="Arial, sans-serif" font-size="10" fill="#666">GPIO</text>
+
+  <!-- ESP32-S3 to Trigger (GPIO) -->
+  <line x1="160" y1="170" x2="130" y2="222" stroke="#444" stroke-width="2"/>
+  <circle cx="160" r="3" cy="170" fill="#444"/>
+  <text x="138" y="198" font-family="Arial, sans-serif" font-size="10" fill="#666">GPIO</text>
+
+  <!-- ESP32-S3 to Rumble Motor (PWM) -->
+  <line x1="300" y1="145" x2="340" y2="145" stroke="#444" stroke-width="2"/>
+  <circle cx="300" r="3" cy="145" fill="#444"/>
+  <text x="320" y="140" font-family="Arial, sans-serif" font-size="10" fill="#666">PWM</text>
+
+  <!-- USB-C to PMIC -->
+  <line x1="240" y1="249" x2="270" y2="249" stroke="#444" stroke-width="2"/>
+  <circle cx="240" r="3" cy="249" fill="#444"/>
+  <text x="255" y="244" font-family="Arial, sans-serif" font-size="10" fill="#666">VBUS</text>
+
+  <!-- PMIC to Battery -->
+  <line x1="350" y1="249" x2="375" y2="249" stroke="#444" stroke-width="2"/>
+  <circle cx="350" r="3" cy="249" fill="#444"/>
+  <text x="362" y="244" font-family="Arial, sans-serif" font-size="10" fill="#666">VBAT</text>
+
+  <!-- PMIC to ESP32-S3 -->
+  <line x1="310" y1="225" x2="270" y2="190" stroke="#444" stroke-width="2"/>
+  <circle cx="310" r="3" cy="225" fill="#444"/>
+  <text x="296" y="214" font-family="Arial, sans-serif" font-size="10" fill="#666">PWR</text>
+</svg>

@@ -1,0 +1,67 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pcbFrontGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3E9B5A"/>
+      <stop offset="100%" stop-color="#2E7A48"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="220" fill="white"/>
+  <!-- PCB outline -->
+  <rect x="30" y="55" width="160" height="110" rx="8" fill="url(#pcbFrontGrad)" stroke="#1F5A34" stroke-width="5"/>
+  <rect x="38" y="63" width="144" height="94" rx="4" fill="none" stroke="#5BC07A" stroke-width="1.5"/>
+
+  <!-- BQ25895 IC -->
+  <rect x="70" y="78" width="50" height="36" rx="4" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="2"/>
+  <rect x="78" y="84" width="34" height="12" rx="2" fill="#C9B28A"/>
+  <text x="95" y="108" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#1F5A34">BQ25895</text>
+
+  <!-- USB-C connector at bottom edge -->
+  <rect x="85" y="148" width="50" height="16" rx="4" fill="#B08D63" stroke="#896A44" stroke-width="2"/>
+  <rect x="91" y="152" width="38" height="8" rx="3" fill="#7A5C3B"/>
+
+  <!-- LED -->
+  <circle cx="140" cy="82" r="5" fill="#FFDD44" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="140" cy="82" r="2.5" fill="#FFE97A"/>
+
+  <!-- 4 Pogo pin pads (2x2 grid) -->
+  <circle cx="152" cy="106" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="168" cy="106" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="152" cy="122" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <circle cx="168" cy="122" r="6" fill="#F2E9D7" stroke="#D9CDBA" stroke-width="1.5"/>
+  <!-- Pin dots -->
+  <circle cx="152" cy="106" r="2" fill="#A38B66"/>
+  <circle cx="168" cy="106" r="2" fill="#A38B66"/>
+  <circle cx="152" cy="122" r="2" fill="#A38B66"/>
+  <circle cx="168" cy="122" r="2" fill="#A38B66"/>
+
+  <!-- Qi coil connector (ring shape) -->
+  <circle cx="50" cy="110" r="12" fill="none" stroke="#D9CDBA" stroke-width="3"/>
+  <circle cx="50" cy="110" r="6" fill="#F2E9D7" stroke="#C9B28A" stroke-width="1.5"/>
+
+  <!-- 8 passive components -->
+  <rect x="72" y="120" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="88" y="120" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="104" y="120" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="72" y="130" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="88" y="130" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="128" y="88" width="5" height="10" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="128" y="102" width="5" height="10" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+  <rect x="56" y="84" width="10" height="5" rx="1" fill="#E8D8BD" stroke="#CBB89B" stroke-width="1"/>
+
+  <!-- Traces -->
+  <line x1="120" y1="96" x2="128" y2="93" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="120" y1="96" x2="128" y2="107" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="95" y1="114" x2="95" y2="120" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="110" y1="148" x2="110" y2="135" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="70" y1="96" x2="62" y2="110" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="120" y1="90" x2="135" y2="82" stroke="#89CFA2" stroke-width="2"/>
+  <line x1="130" y1="107" x2="146" y2="106" stroke="#89CFA2" stroke-width="2"/>
+
+  <!-- 4 Mounting holes -->
+  <circle cx="40" cy="65" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="180" cy="65" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="40" cy="155" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+  <circle cx="180" cy="155" r="4" fill="#CDE5D2" stroke="#1F5A34" stroke-width="1"/>
+
+  <text x="110" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#1F5A34">PCB FRONT</text>
+</svg>

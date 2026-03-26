@@ -16,12 +16,12 @@
 
 ## Multi-Agent System
 
-sketch.ai uses **18 specialized AI agents** working together:
+sketch.ai uses specialized AI agents working together:
 
 ### Core 3D Generation Loop
 ```
 ┌─────────────┐    ┌──────────────────┐    ┌────────┐    ┌─────────┐
-│   Vision    │───▶│ Structure Planner│───▶│ Critic │───▶│ Refiner │
+│   Vision    │--->│ Structure Planner│--->│ Critic │--->│ Refiner │
 │   Agent     │    │                  │    │        │    │         │
 └─────────────┘    └──────────────────┘    └────────┘    └─────────┘
                                                 │              │
@@ -30,12 +30,21 @@ sketch.ai uses **18 specialized AI agents** working together:
                                                     acceptable)
 ```
 
+For enclosure projects, the pipeline uses an **Assembly Spec Planner** that outputs a structured enclosure + PCB spec. That spec is converted deterministically into scene JSON and OpenSCAD for consistent visuals and printable geometry.
+
+### CAD + Photoreal Render (On-Demand)
+
+The CAD render pipeline is optional and runs on-demand:
+- CadQuery builds STEP/STL assets from the assembly spec.
+- Blender Cycles renders a photoreal PNG.
+- Results are returned via `/api/render-3d` and stored in project outputs.
+
 ### Visual Polish Loop
 After structural correctness, a second loop ensures visual quality:
 
 ```
 ┌────────────────┐    ┌─────────────────┐
-│ Visual Critic  │───▶│ Visual Refiner  │
+│ Visual Critic  │--->│ Visual Refiner  │
 │ (score 1-10)   │    │ (fixes issues)  │
 └────────────────┘    └─────────────────┘
          │                    │
@@ -104,7 +113,7 @@ GET /api/health?deep=true
 
 ## Rate Limiting
 
-**File:** `src/lib/rateLimit.ts`
+**File:** `src/backend/infra/rateLimit.ts`
 
 Protects against abuse and controls API costs.
 
@@ -141,7 +150,7 @@ X-RateLimit-Reset: 1704067200
 
 ## Token Tracking
 
-**File:** `src/lib/tokenTracker.ts`
+**File:** `src/backend/infra/tokenTracker.ts`
 
 Monitor OpenAI API costs in real-time.
 
@@ -160,7 +169,7 @@ Monitor OpenAI API costs in real-time.
 
 ### Usage
 ```typescript
-import { trackTokenUsage, getTodayUsage } from '@/lib/tokenTracker';
+import { trackTokenUsage, getTodayUsage } from '@/backend/infra/tokenTracker';
 
 // After API call
 trackTokenUsage('gpt-4o', inputTokens, outputTokens, requestId);
@@ -179,7 +188,7 @@ console.log(`Today's cost: $${today.totalCostUsd.toFixed(2)}`);
 
 ## Structured Logging
 
-**File:** `src/lib/logger.ts`
+**File:** `src/backend/infra/logger.ts`
 
 Production logging with levels, request IDs, and JSON format.
 
@@ -204,7 +213,7 @@ DEBUG → INFO → WARN → ERROR
 
 ### Request Tracing
 ```typescript
-import { logger, generateRequestId } from '@/lib/logger';
+import { logger, generateRequestId } from '@/backend/infra/logger';
 
 const requestId = generateRequestId();
 const log = logger.forRequest(requestId);
@@ -223,7 +232,7 @@ log.error('Failed', {}, error);
 
 ## Metrics Collection
 
-**File:** `src/lib/metrics.ts`
+**File:** `src/backend/infra/metrics.ts`
 
 Track performance metrics for monitoring dashboards.
 
@@ -291,7 +300,7 @@ response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OP
 
 ### When Asked "Is This Production-Ready?"
 
-✅ **Yes, and here's why:**
+**Yes, and here's why:**
 
 1. **Observability:** Structured logging, metrics, health checks
 2. **Security:** Rate limiting, auth support, security headers

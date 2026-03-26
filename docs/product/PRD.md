@@ -45,10 +45,10 @@ Sketch.ai consolidates the entire hardware design process into a single AI-power
 ### 3.1 Multi-Modal Input
 | Input Method | Description | AI Technology |
 |--------------|-------------|---------------|
-| **Sketch Upload** | Upload hand-drawn sketches, napkin drawings, or rough diagrams | GPT-4 Vision |
+| **Sketch Upload** | Upload hand-drawn sketches, napkin drawings, or rough diagrams | GPT-4o (vision-capable) |
 | **Voice Description** | Describe your hardware idea by speaking | Whisper API |
 | **Text Chat** | Conversational interface to refine requirements | GPT-4 |
-| **Reference Images** | Upload existing product images for inspiration | GPT-4 Vision |
+| **Reference Images** | Upload existing product images for inspiration | GPT-4o (vision-capable) |
 
 ### 3.2 AI-Generated Outputs
 | Output | Format | Description |
@@ -115,16 +115,16 @@ So that I can explore different trade-offs quickly.
 
 ## 5. MVP Scope (Phase 1)
 
-### In Scope ✅
+### In Scope
 - [ ] Text input for project description
-- [ ] Image upload for sketch analysis (GPT-4 Vision)
+- [ ] Image upload for sketch analysis (vision-capable model, default gpt-4o)
 - [ ] AI-generated Bill of Materials
 - [ ] AI-generated Assembly Instructions
 - [ ] AI-generated Arduino firmware code
 - [ ] Export as Markdown/ZIP
 - [ ] Basic project management (save/load)
 
-### Out of Scope (Future Phases) ❌
+### Out of Scope (Future Phases)
 - Voice input (Whisper) — Phase 2
 - 3D model generation — Phase 2
 - PCB file generation — Phase 3
@@ -147,7 +147,7 @@ So that I can explore different trade-offs quickly.
 ## 7. Technical Requirements
 
 ### Frontend
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Styling**: Tailwind CSS
 - **State Management**: Zustand
 - **UI Components**: Radix UI / shadcn/ui
@@ -158,14 +158,14 @@ So that I can explore different trade-offs quickly.
 - **Auth**: NextAuth.js or Clerk
 
 ### AI/ML
-- **Vision**: OpenAI GPT-4 Vision API
+- **Vision**: OpenAI GPT-4o (vision-capable)
 - **Text Generation**: OpenAI GPT-4 API
 - **Speech-to-Text**: OpenAI Whisper API (Phase 2)
 
 ### Infrastructure
-- **Hosting**: Vercel
-- **File Storage**: Vercel Blob or AWS S3
-- **CDN**: Vercel Edge Network
+- **Hosting**: Google Cloud Run (containerized)
+- **File Storage**: Object storage (GCS or S3)
+- **CDN**: Cloud CDN (optional)
 
 ---
 
@@ -173,27 +173,27 @@ So that I can explore different trade-offs quickly.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  🎨 Sketch.ai                              [New] [Projects] │
+│  Sketch.ai                               [New] [Projects]   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │                                                     │   │
-│  │        📤 Upload your sketch                        │   │
+│  │        Upload your sketch                           │   │
 │  │           or                                        │   │
-│  │        ✍️  Describe your idea below                 │   │
+│  │        Describe your idea below                     │   │
 │  │                                                     │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │ "I want to build a temperature monitor with..."     │   │
 │  └─────────────────────────────────────────────────────┘   │
-│                                        [🎤] [Generate ➜]   │
+│                                        [Voice] [Generate ->] │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
-│  📋 Generated Outputs                                       │
+│  Generated Outputs                                          │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
 │  │   BOM    │ │ Assembly │ │ Firmware │ │   3D     │       │
-│  │    📊    │ │    📝    │ │    💻    │ │    🧊    │       │
+│  │   (BOM)  │ │ (Assembly)| │ (Firmware)| │  (3D)  │       │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
 └─────────────────────────────────────────────────────────────┘
 ```

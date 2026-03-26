@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordTokenUsage } from '@/lib/openai';
-import { SYSTEM_PROMPT, CHAT_REFINEMENT_PROMPT, fillPromptTemplate } from '@/lib/prompts';
-import { chatRequestSchema } from '@/lib/validators';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { getLLMClient, getModelName, handleOpenAIError, isOfflineMode, recordChatError, recordTokenUsage } from '@/backend/ai/openai';
+import { SYSTEM_PROMPT, CHAT_REFINEMENT_PROMPT, fillPromptTemplate } from '@/backend/ai/prompts';
+import { chatRequestSchema } from '@/shared/schemas/validators';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 export async function POST(request: NextRequest) {
     const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.ai);

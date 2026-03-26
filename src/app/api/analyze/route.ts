@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLLMClient, getModelName, isOfflineMode, handleOpenAIError, recordChatError, recordChatUsage } from '@/lib/openai';
-import { DESCRIPTION_ANALYSIS_PROMPT, SYSTEM_PROMPT, VISION_ANALYSIS_PROMPT } from '@/lib/prompts';
-import { analyzeRequestSchema, analysisResultSchema } from '@/lib/validators';
-import type { AnalyzeResponse, AnalysisResult } from '@/types';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { getLLMClient, getModelName, isOfflineMode, handleOpenAIError, recordChatError, recordChatUsage } from '@/backend/ai/openai';
+import { DESCRIPTION_ANALYSIS_PROMPT, SYSTEM_PROMPT, VISION_ANALYSIS_PROMPT } from '@/backend/ai/prompts';
+import { analyzeRequestSchema, analysisResultSchema } from '@/shared/schemas/validators';
+import type { AnalyzeResponse, AnalysisResult } from '@/shared/types';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 function explainEmptyChoice(choice: unknown): string {
     if (!choice || typeof choice !== 'object') return 'AI returned an empty response.';
@@ -156,6 +156,17 @@ async function buildFallbackAnalysis(
     return buildLocalFallback(description);
 }
 
+const SUPPORTED_IMAGE_DATA_URLS = [
+    'data:image/png',
+    'data:image/jpeg',
+    'data:image/jpg',
+    'data:image/gif',
+    'data:image/webp',
+];
+
+const isSupportedImageDataUrl = (image: string) =>
+    SUPPORTED_IMAGE_DATA_URLS.some((prefix) => image.startsWith(prefix));
+
 export async function POST(request: NextRequest) {
     const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.analyze);
     if (ctx.rateLimitResponse) {
@@ -178,6 +189,15 @@ export async function POST(request: NextRequest) {
 
         const openai = getLLMClient();
         const visionModel = getModelName('vision', model);
+
+        const trimmedImage = image.trim();
+        if (trimmedImage.startsWith('data:image/') && !isSupportedImageDataUrl(trimmedImage)) {
+            const fallbackAnalysis = await buildFallbackAnalysis(openai, description, model, { requestId: ctx.requestId });
+            return ctx.finalize(NextResponse.json<AnalyzeResponse>({
+                success: true,
+                analysis: fallbackAnalysis,
+            }));
+        }
 
         // Build the prompt with optional description
         let userPrompt = VISION_ANALYSIS_PROMPT;

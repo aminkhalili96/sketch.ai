@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer shell outline -->
+  <circle cx="100" cy="100" r="72" stroke="#2F2F2F" stroke-width="5"/>
+  <!-- Inner PCB circle -->
+  <circle cx="100" cy="100" r="52" stroke="#2F2F2F" stroke-width="2" stroke-dasharray="6 6"/>
+  <!-- Concentric ring detail on top face -->
+  <circle cx="100" cy="100" r="62" stroke="#2F2F2F" stroke-width="1.5" stroke-dasharray="3 4"/>
+  <!-- USB-C connector -->
+  <rect x="76" y="150" width="48" height="14" rx="5" stroke="#2F2F2F" stroke-width="4"/>
+  <!-- Status LED dot -->
+  <circle cx="122" cy="76" r="4" fill="#2F2F2F"/>
+  <!-- Lanyard loop (torus ring) -->
+  <circle cx="148" cy="62" r="10" stroke="#2F2F2F" stroke-width="3"/>
+  <circle cx="148" cy="62" r="5" stroke="#2F2F2F" stroke-width="1.5"/>
+  <!-- PCB label line -->
+  <path d="M56 108 C78 118 122 118 144 108" stroke="#2F2F2F" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

@@ -66,11 +66,14 @@ export function middleware(request: NextRequest) {
     response.headers.set('X-XSS-Protection', '1; mode=block');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-    // CORS headers (adjust origin for production)
+    // CORS headers - environment-aware origin restriction
     if (url.startsWith('/api/')) {
-        response.headers.set('Access-Control-Allow-Origin', '*');
-        response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, X-Request-ID');
+        const allowedOrigin = process.env.ALLOWED_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : '*');
+        if (allowedOrigin) {
+            response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
+            response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            response.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, X-Request-ID');
+        }
     }
 
     // Log request (on completion)

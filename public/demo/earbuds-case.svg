@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect x="40" y="30" width="120" height="80" rx="16" fill="none" stroke="#333" stroke-width="2"/>
+  <rect x="40" y="100" width="120" height="70" rx="16" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="40" y1="110" x2="160" y2="110" stroke="#333" stroke-width="1" stroke-dasharray="4,3"/>
+  <ellipse cx="80" cy="140" rx="14" ry="18" fill="none" stroke="#555" stroke-width="1.5"/>
+  <ellipse cx="120" cy="140" rx="14" ry="18" fill="none" stroke="#555" stroke-width="1.5"/>
+  <circle cx="80" cy="140" r="3" fill="#555"/>
+  <circle cx="120" cy="140" r="3" fill="#555"/>
+  <rect x="90" y="168" width="20" height="6" rx="2" fill="none" stroke="#555" stroke-width="1.5"/>
+  <circle cx="100" cy="34" r="3" fill="#4CAF50" opacity="0.7"/>
+  <text x="100" y="195" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#888">Earbuds Case</text>
+</svg>

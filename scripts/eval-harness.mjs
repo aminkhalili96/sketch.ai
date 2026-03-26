@@ -4,8 +4,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
-const datasetPath = path.join(rootDir, 'doc', 'eval', 'benchmarks.json');
-const resultsDir = path.join(rootDir, 'doc', 'eval');
+const datasetPath = path.join(rootDir, 'docs', 'eval', 'benchmarks.json');
+const resultsDir = path.join(rootDir, 'docs', 'eval');
 
 const args = process.argv.slice(2);
 const baseUrlArgIndex = args.findIndex((arg) => arg === '--base-url');
@@ -14,6 +14,20 @@ const baseUrl =
         ? args[baseUrlArgIndex + 1]
         : 'http://localhost:3000';
 const includeBom = args.includes('--bom');
+
+async function assertOfflineServer(baseUrl) {
+    const response = await fetch(`${baseUrl}/api/health?deep=true`);
+    if (!response.ok) {
+        throw new Error(`Health check failed (${response.status}). Start the dev server and retry.`);
+    }
+    const health = await response.json().catch(() => null);
+    const openaiCheck = health?.checks?.openai;
+    if (openaiCheck !== 'unchecked') {
+        throw new Error(
+            'Eval harness requires offline mode. Start the server with USE_OFFLINE_MODEL=true and an OpenAI-compatible local model (Ollama).'
+        );
+    }
+}
 
 function inferKindFromScene(elements) {
     if (!Array.isArray(elements) || elements.length === 0) return 'enclosure';
@@ -48,6 +62,7 @@ function formatDuration(ms) {
 }
 
 async function run() {
+    await assertOfflineServer(baseUrl);
     const datasetRaw = await fs.readFile(datasetPath, 'utf8');
     const dataset = JSON.parse(datasetRaw);
     const cases = Array.isArray(dataset.cases) ? dataset.cases : [];

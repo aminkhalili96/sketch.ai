@@ -33,14 +33,14 @@ async function verify() {
     console.log("Checking API Key Configuration...");
 
     if (!apiKey) {
-        console.error("❌ OPENAI_API_KEY not found in .env.local or .env");
+        console.error("OPENAI_API_KEY not found in .env.local or .env");
         return;
     }
 
     console.log(`Key found: Yes`);
     console.log(`Key length: ${apiKey.length}`);
-    console.log(`Starts with 'sk-': ${apiKey.startsWith('sk-') ? 'Yes' : 'No ❌'}`);
-    console.log(`Ends with newline/whitespace: ${apiKey.trim() !== apiKey ? 'Yes ❌' : 'No'}`);
+    console.log(`Starts with 'sk-': ${apiKey.startsWith('sk-') ? 'Yes' : 'No (unexpected prefix)'}`);
+    console.log(`Ends with newline/whitespace: ${apiKey.trim() !== apiKey ? 'Yes (trim needed)' : 'No'}`);
 
     // Show first 3 and last 3 chars safely
     if (apiKey.length > 10) {
@@ -52,10 +52,10 @@ async function verify() {
         const openai = new OpenAI({ apiKey: apiKey.trim() }); // Trim here for the test
         console.log("Attempting to list models...");
         const list = await openai.models.list();
-        console.log("✅ API Login Successful!");
+        console.log("API login successful.");
         console.log(`Available models: ${list.data.length} found.`);
     } catch (error) {
-        console.error("❌ API Call Failed:");
+        console.error("API call failed:");
         console.error(error.message);
     }
 }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import JSZip from 'jszip';
-import { exportRequestSchema } from '@/lib/validators';
-import { createApiContext } from '@/lib/apiContext';
-import { RATE_LIMIT_CONFIGS } from '@/lib/rateLimit';
+import { exportRequestSchema } from '@/shared/schemas/validators';
+import { createApiContext } from '@/backend/infra/apiContext';
+import { RATE_LIMIT_CONFIGS } from '@/backend/infra/rateLimit';
 
 export async function POST(request: NextRequest) {
     const ctx = createApiContext(request, RATE_LIMIT_CONFIGS.general);
@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
             ));
         }
 
+        const decodeDataUrl = (value: string) => {
+            const match = /^data:([^;]+);base64,(.+)$/.exec(value);
+            if (!match) return null;
+            return { mime: match[1], buffer: Buffer.from(match[2], 'base64') };
+        };
+
         // Add README
         const readmeContent = `# ${projectName}
 
@@ -55,6 +61,10 @@ ${outputs.bom ? '- `Bill-of-Materials.md` - Complete component list' : ''}
 ${outputs.assembly ? '- `Assembly-Instructions.md` - Step-by-step build guide' : ''}
 ${outputs.firmware ? '- `firmware/` - Microcontroller code' : ''}
 ${outputs.schematic ? '- `Schematic.md` - Circuit design description' : ''}
+${outputs['render-png'] ? '- `render.png` - Photoreal CAD render' : ''}
+${outputs['cad-step'] ? '- `model.step` - CAD assembly (STEP)' : ''}
+${outputs['cad-stl'] ? '- `model.stl` - CAD assembly (STL)' : ''}
+${outputs['assembly-spec'] ? '- `assembly_spec.json` - Assembly specification' : ''}
 ${outputs.safety ? '- `Safety-Review.md` - Safety compliance report' : ''}
 ${outputs.sustainability ? '- `Sustainability.md` - Environmental impact analysis' : ''}
 ${outputs['cost-optimization'] ? '- `Cost-Optimization.md` - Cost optimization report' : ''}
@@ -126,6 +136,31 @@ ${outputs['patent-risk'] ? '- `Patent-Risk.md` - Patent/IP risk analysis' : ''}
 
         if (outputs['scene-json']) {
             folder.file('scene_model.json', outputs['scene-json']);
+        }
+
+        if (outputs['assembly-spec']) {
+            folder.file('assembly_spec.json', outputs['assembly-spec']);
+        }
+
+        if (outputs['render-png']) {
+            const decoded = decodeDataUrl(outputs['render-png']);
+            if (decoded) {
+                folder.file('render.png', decoded.buffer);
+            }
+        }
+
+        if (outputs['cad-step']) {
+            const decoded = decodeDataUrl(outputs['cad-step']);
+            if (decoded) {
+                folder.file('model.step', decoded.buffer);
+            }
+        }
+
+        if (outputs['cad-stl']) {
+            const decoded = decodeDataUrl(outputs['cad-stl']);
+            if (decoded) {
+                folder.file('model.stl', decoded.buffer);
+            }
         }
 
         // Generate ZIP

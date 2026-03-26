@@ -1,0 +1,36 @@
+<svg width="460" height="320" viewBox="0 0 460 320" xmlns="http://www.w3.org/2000/svg">
+  <rect width="460" height="320" fill="#ffffff"/>
+  <rect x="12" y="12" width="436" height="296" rx="12" fill="#ffffff" stroke="#A8A8B8" stroke-width="2"/>
+
+  <text x="28" y="40" font-family="Arial, sans-serif" font-size="14" fill="#1B1B1B">Smart Tracker Tag Circuit Diagram</text>
+
+  <rect x="34" y="70" width="120" height="58" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="94" y="104" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#222">USB-C + ESD</text>
+
+  <rect x="176" y="56" width="150" height="84" rx="6" fill="#FDF8E7" stroke="#444" stroke-width="1.5"/>
+  <text x="251" y="92" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#222">BLE SoC</text>
+  <text x="251" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#666">MCU + Radio</text>
+
+  <rect x="344" y="76" width="84" height="52" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="386" y="107" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">Antenna</text>
+
+  <rect x="176" y="170" width="150" height="72" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="251" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#222">Battery + PMIC</text>
+
+  <rect x="34" y="178" width="120" height="58" rx="6" fill="#F7F4EE" stroke="#444" stroke-width="1.5"/>
+  <text x="94" y="211" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#222">Status LED</text>
+
+  <line x1="154" y1="99" x2="176" y2="99" stroke="#444" stroke-width="2"/>
+  <line x1="326" y1="99" x2="344" y2="102" stroke="#444" stroke-width="2"/>
+  <line x1="94" y1="128" x2="94" y2="178" stroke="#444" stroke-width="2"/>
+  <line x1="94" y1="178" x2="176" y2="206" stroke="#444" stroke-width="2"/>
+  <line x1="251" y1="140" x2="251" y2="170" stroke="#444" stroke-width="2"/>
+
+  <circle cx="251" cy="140" r="3" fill="#444"/>
+  <circle cx="94" cy="178" r="3" fill="#444"/>
+  <circle cx="176" cy="206" r="3" fill="#444"/>
+
+  <text x="304" y="154" font-family="Arial, sans-serif" font-size="10" fill="#666">RF</text>
+  <text x="111" y="166" font-family="Arial, sans-serif" font-size="10" fill="#666">GPIO</text>
+  <text x="268" y="160" font-family="Arial, sans-serif" font-size="10" fill="#666">PWR</text>
+</svg>
